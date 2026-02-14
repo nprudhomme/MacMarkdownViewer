@@ -17,6 +17,11 @@ A native macOS Markdown viewer built with [Tauri v2](https://v2.tauri.app/). Bro
 
 Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/MacMarkdownViewer/releases) page.
 
+> **Note:** The app is not signed with an Apple Developer certificate. After installing, macOS Gatekeeper may block it. To fix this, run:
+> ```bash
+> xattr -cr "/Applications/Markdown Viewer.app"
+> ```
+
 ## Build from Source
 
 ### Prerequisites
