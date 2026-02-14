@@ -1,0 +1,30 @@
+{
+  "name": "mdv",
+  "version": "1.0.0",
+  "description": "Markdown Viewer",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-store": "^2.4.2",
+    "marked": "^17.0.2",
+    "marked-gfm-heading-id": "^4.1.3"
+  }
+}
