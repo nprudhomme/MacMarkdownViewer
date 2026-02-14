@@ -53,6 +53,41 @@ jobs:
       - run: npm test
       - run: npm run tauri build
 
+      - name: Re-sign with hardened runtime
+        env:
+          SIGNING_IDENTITY: "Developer ID Application: NICOLAS PATRICK PRUD'HOMME (44DTA694H9)"
+        run: |
+          APP_PATH="src-tauri/target/release/bundle/macos/Markdown Viewer.app"
+
+          # Re-sign all dylibs and frameworks inside the app
+          find "$APP_PATH/Contents" \( -name "*.dylib" -o -name "*.so" \) -type f | while read lib; do
+            codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$lib"
+          done
+
+          # Re-sign the main binary with entitlements
+          codesign --force --options runtime --timestamp \
+            --entitlements src-tauri/entitlements.plist \
+            --sign "$SIGNING_IDENTITY" \
+            "$APP_PATH/Contents/MacOS/mdv"
+
+          # Re-sign the app bundle with entitlements
+          codesign --force --options runtime --timestamp \
+            --entitlements src-tauri/entitlements.plist \
+            --sign "$SIGNING_IDENTITY" \
+            "$APP_PATH"
+
+          # Verify signature
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          echo "Signature verification passed"
+
+          # Recreate DMG from the re-signed app
+          rm -f src-tauri/target/release/bundle/dmg/*.dmg
+          hdiutil create \
+            -volname "Markdown Viewer" \
+            -srcfolder "$APP_PATH" \
+            -ov -format UDZO \
+            "src-tauri/target/release/bundle/dmg/Markdown-Viewer.dmg"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -60,17 +95,3 @@ jobs:
           generate_release_notes: true
           files: |
             src-tauri/target/release/bundle/dmg/*.dmg
-
-      - name: Notarize DMG (non-blocking)
-        continue-on-error: true
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          DMG_PATH=$(ls src-tauri/target/release/bundle/dmg/*.dmg)
-          xcrun notarytool submit "$DMG_PATH" \
-            --apple-id "$APPLE_ID" \
-            --team-id "$APPLE_TEAM_ID" \
-            --password "$APPLE_PASSWORD"
-          echo "Notarization submitted. Check status later with notarytool."
