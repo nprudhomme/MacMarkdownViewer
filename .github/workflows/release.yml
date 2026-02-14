@@ -93,6 +93,8 @@ jobs:
           rm -rf "$STAGING_DIR"
 
       - name: Notarize DMG
+        continue-on-error: true
+        timeout-minutes: 15
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -105,6 +107,7 @@ jobs:
             --password "$APPLE_PASSWORD" \
             --wait
           xcrun stapler staple "$DMG_PATH"
+          echo "NOTARIZED=true" >> "$GITHUB_ENV"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
