@@ -7,8 +7,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    host: host || false,
+    host,
     hmr: host ? { protocol: "ws", host, port: 5174 } : undefined,
     watch: { ignored: ["**/src-tauri/**"] },
+  },
+  test: {
+    environment: "jsdom",
   },
 });

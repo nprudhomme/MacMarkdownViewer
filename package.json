@@ -7,7 +7,10 @@
     "build": "tsc && vite build",
     "tauri": "tauri",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "keywords": [],
   "author": "",
@@ -15,8 +18,11 @@
   "type": "module",
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0",
+    "@types/jsdom": "^27.0.0",
+    "jsdom": "^28.1.0",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
+    "vitepress": "^1.6.4",
     "vitest": "^4.0.18"
   },
   "dependencies": {
