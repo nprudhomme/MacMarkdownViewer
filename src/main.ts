@@ -94,6 +94,17 @@ async function renderMermaidDiagrams(): Promise<void> {
       wrapper.appendChild(btn);
       wrapper.appendChild(preview);
       pre.replaceWith(wrapper);
+
+      // Dynamic height: fit SVG content, cap at 80vh
+      requestAnimationFrame(() => {
+        const svgEl = preview.querySelector("svg");
+        if (svgEl) {
+          const naturalHeight = svgEl.getBoundingClientRect().height;
+          const maxHeight = window.innerHeight * 0.8;
+          preview.style.maxHeight =
+            naturalHeight > maxHeight ? `${maxHeight}px` : "none";
+        }
+      });
     } catch (e) {
       console.warn("Mermaid render failed for diagram", id, e);
       const errWrapper = document.createElement("div");

@@ -1,865 +1,1049 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Docs Viewer</title>
-<style>
-  :root {
-    --sidebar-width: 260px;
-    --outline-width: 220px;
-    --bg: #fafafa;
-    --sidebar-bg: #f0f0f0;
-    --sidebar-hover: #e2e2e2;
-    --sidebar-active: #d4d4d4;
-    --border: #ddd;
-    --text: #1a1a1a;
-    --text-muted: #666;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --code-bg: #f4f4f5;
-    --table-border: #e5e5e5;
-    --table-stripe: #fafafa;
-  }
-
-  @media (prefers-color-scheme: dark) {
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docs Viewer</title>
+    <style>
     :root {
-      --bg: #18181b;
-      --sidebar-bg: #1f1f23;
-      --sidebar-hover: #2a2a2e;
-      --sidebar-active: #333338;
-      --border: #333;
-      --text: #e4e4e7;
-      --text-muted: #a1a1aa;
-      --accent: #60a5fa;
-      --accent-light: #1e293b;
-      --code-bg: #27272a;
-      --table-border: #3f3f46;
-      --table-stripe: #1f1f23;
+      --sidebar-width: 260px;
+      --outline-width: 220px;
+      --bg: #fafafa;
+      --sidebar-bg: #f0f0f0;
+      --sidebar-hover: #e2e2e2;
+      --sidebar-active: #d4d4d4;
+      --border: #ddd;
+      --text: #1a1a1a;
+      --text-muted: #666;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --code-bg: #f4f4f5;
+      --table-border: #e5e5e5;
+      --table-stripe: #fafafa;
     }
-  }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #18181b;
+        --sidebar-bg: #1f1f23;
+        --sidebar-hover: #2a2a2e;
+        --sidebar-active: #333338;
+        --border: #333;
+        --text: #e4e4e7;
+        --text-muted: #a1a1aa;
+        --accent: #60a5fa;
+        --accent-light: #1e293b;
+        --code-bg: #27272a;
+        --table-border: #3f3f46;
+        --table-stripe: #1f1f23;
+      }
+    }
 
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
-  }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  /* Left sidebar — files */
-  #sidebar {
-    width: var(--sidebar-width);
-    min-width: var(--sidebar-width);
-    background: var(--sidebar-bg);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+    body {
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-  #sidebar-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
+    /* Left sidebar — files */
+    #sidebar {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-  #sidebar-header h2 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+    #sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-  #breadcrumb {
-    font-size: 12px;
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-wrap: wrap;
-  }
+    #sidebar-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
 
-  #breadcrumb span { cursor: pointer; color: var(--accent); }
-  #breadcrumb span:hover { text-decoration: underline; }
-  #breadcrumb span.current { color: var(--text-muted); cursor: default; }
-  #breadcrumb span.current:hover { text-decoration: none; }
+    #breadcrumb {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
 
-  #file-list { flex: 1; overflow-y: auto; padding: 8px; }
+    #breadcrumb span {
+      cursor: pointer;
+      color: var(--accent);
+    }
+    #breadcrumb span:hover {
+      text-decoration: underline;
+    }
+    #breadcrumb span.current {
+      color: var(--text-muted);
+      cursor: default;
+    }
+    #breadcrumb span.current:hover {
+      text-decoration: none;
+    }
 
-  .file-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text);
-    transition: background 0.1s;
-    user-select: none;
-  }
+    #file-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
 
-  .file-item:hover { background: var(--sidebar-hover); }
-  .file-item.active { background: var(--sidebar-active); font-weight: 600; }
-  .file-item .icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
-  .file-item .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      transition: background 0.1s;
+      user-select: none;
+    }
 
-  /* Center — content */
-  #content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 48px 40px;
-  }
+    .file-item:hover {
+      background: var(--sidebar-hover);
+    }
+    .file-item.active {
+      background: var(--sidebar-active);
+      font-weight: 600;
+    }
+    .file-item .icon {
+      font-size: 15px;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .file-item .name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-  #content.empty {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    /* Center — content */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 48px 40px;
+    }
 
-  #empty-state { text-align: center; color: var(--text-muted); }
-  #empty-state h2 { font-size: 20px; margin-bottom: 12px; color: var(--text); }
-  #empty-state p { font-size: 14px; line-height: 1.6; }
+    #content.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-  #open-btn {
-    margin-top: 16px;
-    padding: 10px 20px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
+    #empty-state {
+      text-align: center;
+      color: var(--text-muted);
+    }
+    #empty-state h2 {
+      font-size: 20px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    #empty-state p {
+      font-size: 14px;
+      line-height: 1.6;
+    }
 
-  #open-btn:hover { opacity: 0.85; }
+    #open-btn {
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
 
-  /* Right sidebar — outline */
-  #outline {
-    width: var(--outline-width);
-    min-width: var(--outline-width);
-    border-left: 1px solid var(--border);
-    padding: 20px 16px;
-    overflow-y: auto;
-    display: none;
-  }
+    #open-btn:hover {
+      opacity: 0.85;
+    }
 
-  #outline-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 12px;
-  }
+    /* Right sidebar — outline */
+    #outline {
+      width: var(--outline-width);
+      min-width: var(--outline-width);
+      border-left: 1px solid var(--border);
+      padding: 20px 16px;
+      overflow-y: auto;
+      display: none;
+    }
 
-  .outline-item {
-    display: block;
-    padding: 4px 0;
-    font-size: 13px;
-    color: var(--text-muted);
-    text-decoration: none;
-    cursor: pointer;
-    line-height: 1.4;
-    border-left: 2px solid transparent;
-    padding-left: 10px;
-    margin-left: -1px;
-    transition: color 0.1s, border-color 0.1s;
-  }
+    #outline-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
 
-  .outline-item:hover { color: var(--text); }
-  .outline-item.active { color: var(--accent); border-left-color: var(--accent); }
-  .outline-item.depth-3 { padding-left: 22px; font-size: 12px; }
+    .outline-item {
+      display: block;
+      padding: 4px 0;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      cursor: pointer;
+      line-height: 1.4;
+      border-left: 2px solid transparent;
+      padding-left: 10px;
+      margin-left: -1px;
+      transition:
+        color 0.1s,
+        border-color 0.1s;
+    }
 
-  /* Markdown rendering */
-  #markdown {
-    max-width: 820px;
-    margin: 0 auto;
-    line-height: 1.7;
-    font-size: 15px;
-  }
+    .outline-item:hover {
+      color: var(--text);
+    }
+    .outline-item.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+    }
+    .outline-item.depth-3 {
+      padding-left: 22px;
+      font-size: 12px;
+    }
 
-  #markdown h1 { font-size: 2em; font-weight: 700; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  #markdown h2 { font-size: 1.5em; font-weight: 600; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
-  #markdown h3 { font-size: 1.25em; font-weight: 600; margin: 24px 0 8px; }
-  #markdown h4 { font-size: 1.1em; font-weight: 600; margin: 20px 0 8px; }
+    /* Markdown rendering */
+    #markdown {
+      max-width: 820px;
+      margin: 0 auto;
+      line-height: 1.7;
+      font-size: 15px;
+    }
 
-  #markdown p { margin: 0 0 16px; }
-  #markdown ul, #markdown ol { margin: 0 0 16px; padding-left: 24px; }
-  #markdown li { margin: 4px 0; }
-  #markdown li > ul, #markdown li > ol { margin: 4px 0 4px; }
+    #markdown h1 {
+      font-size: 2em;
+      font-weight: 700;
+      margin: 0 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    #markdown h2 {
+      font-size: 1.5em;
+      font-weight: 600;
+      margin: 32px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    #markdown h3 {
+      font-size: 1.25em;
+      font-weight: 600;
+      margin: 24px 0 8px;
+    }
+    #markdown h4 {
+      font-size: 1.1em;
+      font-weight: 600;
+      margin: 20px 0 8px;
+    }
 
-  #markdown a { color: var(--accent); text-decoration: none; }
-  #markdown a:hover { text-decoration: underline; }
+    #markdown p {
+      margin: 0 0 16px;
+    }
+    #markdown ul,
+    #markdown ol {
+      margin: 0 0 16px;
+      padding-left: 24px;
+    }
+    #markdown li {
+      margin: 4px 0;
+    }
+    #markdown li > ul,
+    #markdown li > ol {
+      margin: 4px 0 4px;
+    }
 
-  #markdown code {
-    background: var(--code-bg);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 0.88em;
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
-  }
+    #markdown a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    #markdown a:hover {
+      text-decoration: underline;
+    }
 
-  #markdown pre {
-    background: var(--code-bg);
-    padding: 16px;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 0 0 16px;
-    font-size: 13px;
-    line-height: 1.5;
-  }
+    #markdown code {
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    }
 
-  #markdown pre code { background: none; padding: 0; border-radius: 0; font-size: inherit; }
+    #markdown pre {
+      background: var(--code-bg);
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 0 0 16px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
 
-  #markdown blockquote {
-    border-left: 3px solid var(--accent);
-    padding: 4px 16px;
-    margin: 0 0 16px;
-    color: var(--text-muted);
-    background: var(--accent-light);
-    border-radius: 0 6px 6px 0;
-  }
+    #markdown pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
 
-  #markdown table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 14px; }
-  #markdown th, #markdown td { border: 1px solid var(--table-border); padding: 8px 12px; text-align: left; }
-  #markdown th { font-weight: 600; background: var(--code-bg); }
-  #markdown tr:nth-child(even) { background: var(--table-stripe); }
+    #markdown blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 4px 16px;
+      margin: 0 0 16px;
+      color: var(--text-muted);
+      background: var(--accent-light);
+      border-radius: 0 6px 6px 0;
+    }
 
-  #markdown hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
-  #markdown img { max-width: 100%; border-radius: 8px; }
-  #markdown strong { font-weight: 600; }
-  #markdown del { color: var(--text-muted); }
+    #markdown table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 16px;
+      font-size: 14px;
+    }
+    #markdown th,
+    #markdown td {
+      border: 1px solid var(--table-border);
+      padding: 8px 12px;
+      text-align: left;
+    }
+    #markdown th {
+      font-weight: 600;
+      background: var(--code-bg);
+    }
+    #markdown tr:nth-child(even) {
+      background: var(--table-stripe);
+    }
 
-  /* Mermaid diagrams */
-  .mermaid-wrapper {
-    position: relative;
-    margin: 0 0 16px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-    background: var(--bg);
-  }
+    #markdown hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+    #markdown img {
+      max-width: 100%;
+      border-radius: 8px;
+    }
+    #markdown strong {
+      font-weight: 600;
+    }
+    #markdown del {
+      color: var(--text-muted);
+    }
 
-  .mermaid-wrapper .mermaid-preview {
-    padding: 24px 16px;
-    overflow-x: auto;
-    max-height: 500px;
-    overflow-y: auto;
-  }
+    /* Mermaid diagrams */
+    .mermaid-wrapper {
+      position: relative;
+      margin: 0 0 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg);
+    }
 
-  .mermaid-wrapper .mermaid-preview svg {
-    display: block;
-    margin: 0 auto;
-    max-width: 100%;
-    height: auto;
-  }
+    .mermaid-wrapper .mermaid-preview {
+      padding: 24px 16px;
+      overflow-x: auto;
+      overflow-y: auto;
+      /* max-height set dynamically by JS based on SVG content */
+    }
 
-  .mermaid-fullscreen-btn {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    padding: 6px 12px;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
+    .mermaid-wrapper .mermaid-preview svg {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+    }
 
-  .mermaid-fullscreen-btn:hover {
-    background: var(--sidebar-hover);
-    color: var(--text);
-  }
+    .mermaid-fullscreen-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 6px 12px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition:
+        background 0.15s,
+        color 0.15s;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
 
-  /* Fullscreen overlay */
-  .mermaid-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    background: var(--bg);
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
+    .mermaid-fullscreen-btn:hover {
+      background: var(--sidebar-hover);
+      color: var(--text);
+    }
 
-  .mermaid-overlay.visible { opacity: 1; }
+    /* Fullscreen overlay */
+    .mermaid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
 
-  .mermaid-overlay-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
+    .mermaid-overlay.visible {
+      opacity: 1;
+    }
 
-  .mermaid-overlay-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-  }
+    .mermaid-overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
 
-  .mermaid-overlay-close {
-    padding: 6px 16px;
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    cursor: pointer;
-    transition: background 0.15s;
-  }
+    .mermaid-overlay-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
 
-  .mermaid-overlay-close:hover { background: var(--sidebar-hover); }
+    .mermaid-overlay-close {
+      padding: 6px 16px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
 
-  .mermaid-overlay-body {
-    flex: 1;
-    overflow: auto;
-    padding: 32px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-  }
+    .mermaid-overlay-close:hover {
+      background: var(--sidebar-hover);
+    }
 
-  .mermaid-overlay-body svg {
-    max-width: 95vw;
-    height: auto;
-  }
-</style>
-</head>
-<body>
+    .mermaid-overlay-body {
+      flex: 1;
+      overflow: auto;
+      padding: 32px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+    }
 
-<div id="sidebar">
-  <div id="sidebar-header">
-    <h2>Docs Viewer</h2>
-    <div id="breadcrumb"></div>
-  </div>
-  <div id="file-list"></div>
-</div>
+    .mermaid-overlay-body svg {
+      max-width: 95vw;
+      height: auto;
+    }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <h2>Docs Viewer</h2>
+        <div id="breadcrumb"></div>
+      </div>
+      <div id="file-list"></div>
+    </div>
 
-<div id="content" class="empty">
-  <div id="empty-state">
-    <h2>Markdown Viewer</h2>
-    <p id="hint"></p>
-    <button id="open-btn">Open folder</button>
-    <p id="restore-msg" style="display:none; margin-top:12px; font-size:13px;"></p>
-  </div>
-  <div id="markdown" style="display:none"></div>
-</div>
+    <div id="content" class="empty">
+      <div id="empty-state">
+        <h2>Markdown Viewer</h2>
+        <p id="hint"></p>
+        <button id="open-btn">Open folder</button>
+        <p
+          id="restore-msg"
+          style="display:none; margin-top:12px; font-size:13px;"
+        ></p>
+      </div>
+      <div id="markdown" style="display:none"></div>
+    </div>
 
-<div id="outline">
-  <div id="outline-title">On this page</div>
-  <nav id="outline-nav"></nav>
-</div>
+    <div id="outline">
+      <div id="outline-title">On this page</div>
+      <nav id="outline-nav"></nav>
+    </div>
 
-<script type="module">
-  import { Marked } from 'https://cdn.jsdelivr.net/npm/marked@15/+esm';
-  import { gfmHeadingId } from 'https://cdn.jsdelivr.net/npm/marked-gfm-heading-id@4/+esm';
-  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs';
+    <script type="module">
+    import { Marked } from "https://cdn.jsdelivr.net/npm/marked@15/+esm";
+    import { gfmHeadingId } from "https://cdn.jsdelivr.net/npm/marked-gfm-heading-id@4/+esm";
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
 
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
-    securityLevel: 'loose',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  });
-
-  // Re-init mermaid theme on system theme change
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
     mermaid.initialize({
       startOnLoad: false,
-      theme: e.matches ? 'dark' : 'default',
-      securityLevel: 'loose',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      theme: window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "default",
+      securityLevel: "loose",
+      fontFamily:
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     });
-  });
 
-  const marked = new Marked();
-  marked.use(gfmHeadingId());
+    // Re-init mermaid theme on system theme change
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", (e) => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: e.matches ? "dark" : "default",
+          securityLevel: "loose",
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        });
+      });
 
-  const fileList = document.getElementById('file-list');
-  const breadcrumb = document.getElementById('breadcrumb');
-  const markdownEl = document.getElementById('markdown');
-  const emptyState = document.getElementById('empty-state');
-  const contentEl = document.getElementById('content');
-  const openBtn = document.getElementById('open-btn');
-  const hintEl = document.getElementById('hint');
-  const restoreMsg = document.getElementById('restore-msg');
-  const outlineEl = document.getElementById('outline');
-  const outlineNav = document.getElementById('outline-nav');
+    const marked = new Marked();
+    marked.use(gfmHeadingId());
 
-  let rootHandle = null;
-  let currentPath = [];
-  let activeFile = null;
-  let scrollObserver = null;
+    const fileList = document.getElementById("file-list");
+    const breadcrumb = document.getElementById("breadcrumb");
+    const markdownEl = document.getElementById("markdown");
+    const emptyState = document.getElementById("empty-state");
+    const contentEl = document.getElementById("content");
+    const openBtn = document.getElementById("open-btn");
+    const hintEl = document.getElementById("hint");
+    const restoreMsg = document.getElementById("restore-msg");
+    const outlineEl = document.getElementById("outline");
+    const outlineNav = document.getElementById("outline-nav");
 
-  const DB_NAME = 'MarkdownViewerDB';
-  const STORE_NAME = 'handles';
-  const HANDLE_KEY = 'rootDir';
+    let rootHandle = null;
+    let currentPath = [];
+    let activeFile = null;
+    let scrollObserver = null;
 
-  // --- IndexedDB persistence ---
+    const DB_NAME = "MarkdownViewerDB";
+    const STORE_NAME = "handles";
+    const HANDLE_KEY = "rootDir";
 
-  function openDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, 1);
-      req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  }
+    // --- IndexedDB persistence ---
 
-  async function saveHandle(handle) {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(handle, HANDLE_KEY);
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  }
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
 
-  async function loadHandle() {
-    const db = await openDB();
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get(HANDLE_KEY);
-    return new Promise((resolve) => {
-      req.onsuccess = () => resolve(req.result || null);
-      req.onerror = () => resolve(null);
-    });
-  }
+    async function saveHandle(handle) {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(handle, HANDLE_KEY);
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+      });
+    }
 
-  // --- Detect expected directory from file:// URL ---
+    async function loadHandle() {
+      const db = await openDB();
+      const tx = db.transaction(STORE_NAME, "readonly");
+      const req = tx.objectStore(STORE_NAME).get(HANDLE_KEY);
+      return new Promise((resolve) => {
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+    }
 
-  function getExpectedDirName() {
-    try {
-      const path = decodeURIComponent(window.location.pathname);
-      const parts = path.split('/');
-      parts.pop();
-      return parts.filter(Boolean).pop() || null;
-    } catch { return null; }
-  }
+    // --- Detect expected directory from file:// URL ---
 
-  // --- Init ---
-
-  openBtn.addEventListener('click', openFolder);
-
-  async function init() {
-    const dirName = getExpectedDirName();
-    hintEl.textContent = dirName
-      ? `Select the "${dirName}" folder where this file is located.`
-      : 'Open a folder to browse your documentation.';
-
-    const saved = await loadHandle();
-    if (saved) {
-      const perm = await saved.queryPermission({ mode: 'read' });
-      if (perm === 'granted') {
-        rootHandle = saved;
-        currentPath = [];
-        activeFile = null;
-        await renderSidebar();
-        await autoSelectReadme();
-        return;
+    function getExpectedDirName() {
+      try {
+        const path = decodeURIComponent(window.location.pathname);
+        const parts = path.split("/");
+        parts.pop();
+        return parts.filter(Boolean).pop() || null;
+      } catch {
+        return null;
       }
-      restoreMsg.style.display = 'block';
-      restoreMsg.innerHTML = `Previously opened: <strong>${saved.name}</strong>`;
-      const restoreBtn = document.createElement('button');
-      restoreBtn.textContent = 'Reopen';
-      restoreBtn.style.cssText = 'margin-left:8px;padding:4px 12px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;';
-      restoreBtn.addEventListener('click', async () => {
-        const result = await saved.requestPermission({ mode: 'read' });
-        if (result === 'granted') {
+    }
+
+    // --- Init ---
+
+    openBtn.addEventListener("click", openFolder);
+
+    async function init() {
+      const dirName = getExpectedDirName();
+      hintEl.textContent = dirName
+        ? `Select the "${dirName}" folder where this file is located.`
+        : "Open a folder to browse your documentation.";
+
+      const saved = await loadHandle();
+      if (saved) {
+        const perm = await saved.queryPermission({ mode: "read" });
+        if (perm === "granted") {
           rootHandle = saved;
           currentPath = [];
           activeFile = null;
           await renderSidebar();
           await autoSelectReadme();
+          return;
         }
-      });
-      restoreMsg.appendChild(restoreBtn);
-    }
-  }
-
-  init();
-
-  async function openFolder() {
-    try {
-      const opts = {};
-      const saved = await loadHandle();
-      if (saved) opts.startIn = saved;
-      rootHandle = await window.showDirectoryPicker(opts);
-      await saveHandle(rootHandle);
-      currentPath = [];
-      activeFile = null;
-      restoreMsg.style.display = 'none';
-      await renderSidebar();
-      await autoSelectReadme();
-    } catch {}
-  }
-
-  async function getHandle(pathParts) {
-    let handle = rootHandle;
-    for (const part of pathParts) handle = await handle.getDirectoryHandle(part);
-    return handle;
-  }
-
-  async function listEntries(dirHandle) {
-    const dirs = [];
-    const files = [];
-    for await (const [name, handle] of dirHandle.entries()) {
-      if (name.startsWith('.')) continue;
-      if (handle.kind === 'directory') dirs.push({ name, kind: 'directory' });
-      else if (name.endsWith('.md')) files.push({ name, kind: 'file' });
-    }
-    dirs.sort((a, b) => a.name.localeCompare(b.name));
-    files.sort((a, b) => a.name.localeCompare(b.name));
-    return [...dirs, ...files];
-  }
-
-  async function renderSidebar() {
-    const dirHandle = await getHandle(currentPath);
-    const entries = await listEntries(dirHandle);
-    fileList.innerHTML = '';
-
-    if (currentPath.length > 0) {
-      const back = document.createElement('div');
-      back.className = 'file-item';
-      back.innerHTML = '<span class="icon">..</span><span class="name">Parent directory</span>';
-      back.addEventListener('click', () => { currentPath.pop(); renderSidebar(); });
-      fileList.appendChild(back);
-    }
-
-    for (const entry of entries) {
-      const item = document.createElement('div');
-      item.className = 'file-item';
-      const icon = entry.kind === 'directory' ? '\ud83d\udcc1' : '\ud83d\udcc4';
-      item.innerHTML = `<span class="icon">${icon}</span><span class="name">${entry.name}</span>`;
-
-      if (entry.kind === 'directory') {
-        item.addEventListener('click', () => { currentPath.push(entry.name); renderSidebar(); });
-      } else {
-        const filePath = [...currentPath, entry.name].join('/');
-        if (filePath === activeFile) item.classList.add('active');
-        item.addEventListener('click', () => loadFile(filePath));
-      }
-      fileList.appendChild(item);
-    }
-    renderBreadcrumb();
-  }
-
-  function renderBreadcrumb() {
-    breadcrumb.innerHTML = '';
-
-    const changeBtn = document.createElement('span');
-    changeBtn.textContent = '\u21c4';
-    changeBtn.title = 'Change folder';
-    changeBtn.style.cssText = 'cursor:pointer;font-size:14px;margin-right:4px;opacity:0.6;';
-    changeBtn.addEventListener('click', openFolder);
-    breadcrumb.appendChild(changeBtn);
-
-    const root = document.createElement('span');
-    root.textContent = rootHandle?.name || 'root';
-    if (currentPath.length > 0) {
-      root.addEventListener('click', () => { currentPath = []; renderSidebar(); });
-    } else {
-      root.classList.add('current');
-    }
-    breadcrumb.appendChild(root);
-
-    currentPath.forEach((part, i) => {
-      breadcrumb.appendChild(document.createTextNode(' / '));
-      const span = document.createElement('span');
-      span.textContent = part;
-      if (i < currentPath.length - 1) {
-        span.addEventListener('click', () => { currentPath = currentPath.slice(0, i + 1); renderSidebar(); });
-      } else {
-        span.classList.add('current');
-      }
-      breadcrumb.appendChild(span);
-    });
-  }
-
-  async function autoSelectReadme() {
-    const dirHandle = await getHandle(currentPath);
-    const entries = await listEntries(dirHandle);
-    const readme = entries.find(e => e.kind === 'file' && e.name.toLowerCase() === 'readme.md');
-    if (readme) await loadFile([...currentPath, readme.name].join('/'));
-  }
-
-  async function loadFile(filePath) {
-    try {
-      const parts = filePath.split('/');
-      const fileName = parts.pop();
-      let dirHandle = rootHandle;
-      for (const p of parts) dirHandle = await dirHandle.getDirectoryHandle(p);
-      const fileHandle = await dirHandle.getFileHandle(fileName);
-      const file = await fileHandle.getFile();
-      const text = await file.text();
-
-      activeFile = filePath;
-      emptyState.style.display = 'none';
-      markdownEl.style.display = 'block';
-      contentEl.classList.remove('empty');
-
-      markdownEl.innerHTML = marked.parse(text);
-      contentEl.scrollTop = 0;
-
-      await renderMermaidDiagrams();
-
-      const fileDir = filePath.split('/').slice(0, -1);
-      if (fileDir.join('/') !== currentPath.join('/')) {
-        currentPath = fileDir;
-        await renderSidebar();
-      }
-
-      interceptLinks(parts);
-      highlightSidebar();
-      buildOutline();
-    } catch (e) {
-      console.error('Failed to load file:', filePath, e);
-    }
-  }
-
-  // --- Right outline ---
-
-  function buildOutline() {
-    if (scrollObserver) scrollObserver.disconnect();
-
-    const headings = markdownEl.querySelectorAll('h2, h3');
-    outlineNav.innerHTML = '';
-
-    if (headings.length === 0) {
-      outlineEl.style.display = 'none';
-      return;
-    }
-
-    outlineEl.style.display = 'block';
-    const items = [];
-
-    headings.forEach(h => {
-      const item = document.createElement('a');
-      item.className = 'outline-item';
-      if (h.tagName === 'H3') item.classList.add('depth-3');
-      item.textContent = h.textContent;
-      item.dataset.targetId = h.id;
-      item.addEventListener('click', () => {
-        h.scrollIntoView({ behavior: 'smooth' });
-      });
-      outlineNav.appendChild(item);
-      items.push({ el: item, heading: h });
-    });
-
-    // IntersectionObserver to highlight current section
-    scrollObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const id = entry.target.id;
-            items.forEach(i => i.el.classList.toggle('active', i.heading.id === id));
+        restoreMsg.style.display = "block";
+        restoreMsg.innerHTML = `Previously opened: <strong>${saved.name}</strong>`;
+        const restoreBtn = document.createElement("button");
+        restoreBtn.textContent = "Reopen";
+        restoreBtn.style.cssText =
+          "margin-left:8px;padding:4px 12px;background:var(--accent);color:white;border:none;border-radius:6px;font-size:13px;cursor:pointer;";
+        restoreBtn.addEventListener("click", async () => {
+          const result = await saved.requestPermission({ mode: "read" });
+          if (result === "granted") {
+            rootHandle = saved;
+            currentPath = [];
+            activeFile = null;
+            await renderSidebar();
+            await autoSelectReadme();
           }
-        }
-      },
-      {
-        root: contentEl,
-        rootMargin: '0px 0px -70% 0px',
-        threshold: 0.1,
-      }
-    );
-
-    headings.forEach(h => scrollObserver.observe(h));
-  }
-
-  // --- Link interception ---
-
-  function interceptLinks(currentDir) {
-    markdownEl.querySelectorAll('a').forEach(a => {
-      const href = a.getAttribute('href');
-      if (!href) return;
-
-      if (href.startsWith('http://') || href.startsWith('https://')) {
-        a.target = '_blank';
-        a.rel = 'noopener';
-        return;
-      }
-
-      if (href.startsWith('#')) {
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          const id = href.slice(1);
-          const target = markdownEl.querySelector(`#${CSS.escape(id)}`);
-          if (target) target.scrollIntoView({ behavior: 'smooth' });
         });
+        restoreMsg.appendChild(restoreBtn);
+      }
+    }
+
+    init();
+
+    async function openFolder() {
+      try {
+        const opts = {};
+        const saved = await loadHandle();
+        if (saved) opts.startIn = saved;
+        rootHandle = await window.showDirectoryPicker(opts);
+        await saveHandle(rootHandle);
+        currentPath = [];
+        activeFile = null;
+        restoreMsg.style.display = "none";
+        await renderSidebar();
+        await autoSelectReadme();
+      } catch {}
+    }
+
+    async function getHandle(pathParts) {
+      let handle = rootHandle;
+      for (const part of pathParts)
+        handle = await handle.getDirectoryHandle(part);
+      return handle;
+    }
+
+    async function listEntries(dirHandle) {
+      const dirs = [];
+      const files = [];
+      for await (const [name, handle] of dirHandle.entries()) {
+        if (name.startsWith(".")) continue;
+        if (handle.kind === "directory") dirs.push({ name, kind: "directory" });
+        else if (name.endsWith(".md")) files.push({ name, kind: "file" });
+      }
+      dirs.sort((a, b) => a.name.localeCompare(b.name));
+      files.sort((a, b) => a.name.localeCompare(b.name));
+      return [...dirs, ...files];
+    }
+
+    async function renderSidebar() {
+      const dirHandle = await getHandle(currentPath);
+      const entries = await listEntries(dirHandle);
+      fileList.innerHTML = "";
+
+      if (currentPath.length > 0) {
+        const back = document.createElement("div");
+        back.className = "file-item";
+        back.innerHTML =
+          '<span class="icon">..</span><span class="name">Parent directory</span>';
+        back.addEventListener("click", () => {
+          currentPath.pop();
+          renderSidebar();
+        });
+        fileList.appendChild(back);
+      }
+
+      for (const entry of entries) {
+        const item = document.createElement("div");
+        item.className = "file-item";
+        const icon =
+          entry.kind === "directory" ? "\ud83d\udcc1" : "\ud83d\udcc4";
+        item.innerHTML = `<span class="icon">${icon}</span><span class="name">${entry.name}</span>`;
+
+        if (entry.kind === "directory") {
+          item.addEventListener("click", () => {
+            currentPath.push(entry.name);
+            renderSidebar();
+          });
+        } else {
+          const filePath = [...currentPath, entry.name].join("/");
+          if (filePath === activeFile) item.classList.add("active");
+          item.addEventListener("click", () => loadFile(filePath));
+        }
+        fileList.appendChild(item);
+      }
+      renderBreadcrumb();
+    }
+
+    function renderBreadcrumb() {
+      breadcrumb.innerHTML = "";
+
+      const changeBtn = document.createElement("span");
+      changeBtn.textContent = "\u21c4";
+      changeBtn.title = "Change folder";
+      changeBtn.style.cssText =
+        "cursor:pointer;font-size:14px;margin-right:4px;opacity:0.6;";
+      changeBtn.addEventListener("click", openFolder);
+      breadcrumb.appendChild(changeBtn);
+
+      const root = document.createElement("span");
+      root.textContent = rootHandle?.name || "root";
+      if (currentPath.length > 0) {
+        root.addEventListener("click", () => {
+          currentPath = [];
+          renderSidebar();
+        });
+      } else {
+        root.classList.add("current");
+      }
+      breadcrumb.appendChild(root);
+
+      currentPath.forEach((part, i) => {
+        breadcrumb.appendChild(document.createTextNode(" / "));
+        const span = document.createElement("span");
+        span.textContent = part;
+        if (i < currentPath.length - 1) {
+          span.addEventListener("click", () => {
+            currentPath = currentPath.slice(0, i + 1);
+            renderSidebar();
+          });
+        } else {
+          span.classList.add("current");
+        }
+        breadcrumb.appendChild(span);
+      });
+    }
+
+    async function autoSelectReadme() {
+      const dirHandle = await getHandle(currentPath);
+      const entries = await listEntries(dirHandle);
+      const readme = entries.find(
+        (e) => e.kind === "file" && e.name.toLowerCase() === "readme.md"
+      );
+      if (readme) await loadFile([...currentPath, readme.name].join("/"));
+    }
+
+    async function loadFile(filePath) {
+      try {
+        const parts = filePath.split("/");
+        const fileName = parts.pop();
+        let dirHandle = rootHandle;
+        for (const p of parts)
+          dirHandle = await dirHandle.getDirectoryHandle(p);
+        const fileHandle = await dirHandle.getFileHandle(fileName);
+        const file = await fileHandle.getFile();
+        const text = await file.text();
+
+        activeFile = filePath;
+        emptyState.style.display = "none";
+        markdownEl.style.display = "block";
+        contentEl.classList.remove("empty");
+
+        markdownEl.innerHTML = marked.parse(text);
+        contentEl.scrollTop = 0;
+
+        await renderMermaidDiagrams();
+
+        const fileDir = filePath.split("/").slice(0, -1);
+        if (fileDir.join("/") !== currentPath.join("/")) {
+          currentPath = fileDir;
+          await renderSidebar();
+        }
+
+        interceptLinks(parts);
+        highlightSidebar();
+        buildOutline();
+      } catch (e) {
+        console.error("Failed to load file:", filePath, e);
+      }
+    }
+
+    // --- Right outline ---
+
+    function buildOutline() {
+      if (scrollObserver) scrollObserver.disconnect();
+
+      const headings = markdownEl.querySelectorAll("h2, h3");
+      outlineNav.innerHTML = "";
+
+      if (headings.length === 0) {
+        outlineEl.style.display = "none";
         return;
       }
 
-      if (href.endsWith('.md') || href.includes('.md#')) {
-        a.addEventListener('click', (e) => {
-          e.preventDefault();
-          const [filePart, anchor] = href.split('#');
-          const resolved = resolvePath([...currentDir], filePart);
-          loadFile(resolved).then(() => {
-            if (anchor) {
-              const target = markdownEl.querySelector(`#${CSS.escape(anchor)}`);
-              if (target) target.scrollIntoView({ behavior: 'smooth' });
+      outlineEl.style.display = "block";
+      const items = [];
+
+      headings.forEach((h) => {
+        const item = document.createElement("a");
+        item.className = "outline-item";
+        if (h.tagName === "H3") item.classList.add("depth-3");
+        item.textContent = h.textContent;
+        item.dataset.targetId = h.id;
+        item.addEventListener("click", () => {
+          h.scrollIntoView({ behavior: "smooth" });
+        });
+        outlineNav.appendChild(item);
+        items.push({ el: item, heading: h });
+      });
+
+      // IntersectionObserver to highlight current section
+      scrollObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const id = entry.target.id;
+              items.forEach((i) =>
+                i.el.classList.toggle("active", i.heading.id === id)
+              );
+            }
+          }
+        },
+        {
+          root: contentEl,
+          rootMargin: "0px 0px -70% 0px",
+          threshold: 0.1,
+        }
+      );
+
+      headings.forEach((h) => scrollObserver.observe(h));
+    }
+
+    // --- Link interception ---
+
+    function interceptLinks(currentDir) {
+      markdownEl.querySelectorAll("a").forEach((a) => {
+        const href = a.getAttribute("href");
+        if (!href) return;
+
+        if (href.startsWith("http://") || href.startsWith("https://")) {
+          a.target = "_blank";
+          a.rel = "noopener";
+          return;
+        }
+
+        if (href.startsWith("#")) {
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            const id = href.slice(1);
+            const target = markdownEl.querySelector(`#${CSS.escape(id)}`);
+            if (target) target.scrollIntoView({ behavior: "smooth" });
+          });
+          return;
+        }
+
+        if (href.endsWith(".md") || href.includes(".md#")) {
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            const [filePart, anchor] = href.split("#");
+            const resolved = resolvePath([...currentDir], filePart);
+            loadFile(resolved).then(() => {
+              if (anchor) {
+                const target = markdownEl.querySelector(
+                  `#${CSS.escape(anchor)}`
+                );
+                if (target) target.scrollIntoView({ behavior: "smooth" });
+              }
+            });
+          });
+        }
+      });
+    }
+
+    function resolvePath(base, relative) {
+      const parts = [...base];
+      for (const segment of relative.split("/")) {
+        if (segment === "..") parts.pop();
+        else if (segment !== "." && segment !== "") parts.push(segment);
+      }
+      return parts.join("/");
+    }
+
+    function highlightSidebar() {
+      fileList
+        .querySelectorAll(".file-item")
+        .forEach((item) => item.classList.remove("active"));
+      if (!activeFile) return;
+      const activeName = activeFile.split("/").pop();
+      const activeDir = activeFile.split("/").slice(0, -1).join("/");
+      if (activeDir === currentPath.join("/")) {
+        fileList.querySelectorAll(".file-item").forEach((item) => {
+          if (item.querySelector(".name")?.textContent === activeName)
+            item.classList.add("active");
+        });
+      }
+    }
+
+    // --- Mermaid rendering ---
+
+    let mermaidCounter = 0;
+
+    async function renderMermaidDiagrams() {
+      // Find all code blocks with class "language-mermaid"
+      const codeBlocks = markdownEl.querySelectorAll(
+        "pre > code.language-mermaid"
+      );
+      if (codeBlocks.length === 0) return;
+
+      for (const codeBlock of codeBlocks) {
+        const pre = codeBlock.parentElement;
+        const source = codeBlock.textContent;
+        const id = `mermaid-${++mermaidCounter}`;
+
+        // Detect diagram title from source (first comment or preceding heading)
+        let title = "Diagram";
+        const prevEl = pre.previousElementSibling;
+        if (prevEl && /^H[2-4]$/.test(prevEl.tagName)) {
+          title = prevEl.textContent;
+        }
+
+        try {
+          const { svg } = await mermaid.render(id, source);
+
+          // Create wrapper
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-wrapper";
+
+          // Fullscreen button
+          const btn = document.createElement("button");
+          btn.className = "mermaid-fullscreen-btn";
+          btn.innerHTML = "<span>&#x26F6;</span> Fullscreen";
+          btn.addEventListener("click", () =>
+            openMermaidFullscreen(svg, title)
+          );
+
+          // Preview container
+          const preview = document.createElement("div");
+          preview.className = "mermaid-preview";
+          preview.innerHTML = svg;
+
+          wrapper.appendChild(btn);
+          wrapper.appendChild(preview);
+          pre.replaceWith(wrapper);
+
+          // Dynamic height: fit SVG content, cap at 80vh
+          requestAnimationFrame(() => {
+            const svgEl = preview.querySelector("svg");
+            if (svgEl) {
+              const naturalHeight = svgEl.getBoundingClientRect().height;
+              const maxHeight = window.innerHeight * 0.8;
+              preview.style.maxHeight =
+                naturalHeight > maxHeight ? `${maxHeight}px` : "none";
             }
           });
-        });
-      }
-    });
-  }
-
-  function resolvePath(base, relative) {
-    const parts = [...base];
-    for (const segment of relative.split('/')) {
-      if (segment === '..') parts.pop();
-      else if (segment !== '.' && segment !== '') parts.push(segment);
-    }
-    return parts.join('/');
-  }
-
-  function highlightSidebar() {
-    fileList.querySelectorAll('.file-item').forEach(item => item.classList.remove('active'));
-    if (!activeFile) return;
-    const activeName = activeFile.split('/').pop();
-    const activeDir = activeFile.split('/').slice(0, -1).join('/');
-    if (activeDir === currentPath.join('/')) {
-      fileList.querySelectorAll('.file-item').forEach(item => {
-        if (item.querySelector('.name')?.textContent === activeName) item.classList.add('active');
-      });
-    }
-  }
-
-  // --- Mermaid rendering ---
-
-  let mermaidCounter = 0;
-
-  async function renderMermaidDiagrams() {
-    // Find all code blocks with class "language-mermaid"
-    const codeBlocks = markdownEl.querySelectorAll('pre > code.language-mermaid');
-    if (codeBlocks.length === 0) return;
-
-    for (const codeBlock of codeBlocks) {
-      const pre = codeBlock.parentElement;
-      const source = codeBlock.textContent;
-      const id = `mermaid-${++mermaidCounter}`;
-
-      // Detect diagram title from source (first comment or preceding heading)
-      let title = 'Diagram';
-      const prevEl = pre.previousElementSibling;
-      if (prevEl && /^H[2-4]$/.test(prevEl.tagName)) {
-        title = prevEl.textContent;
-      }
-
-      try {
-        const { svg } = await mermaid.render(id, source);
-
-        // Create wrapper
-        const wrapper = document.createElement('div');
-        wrapper.className = 'mermaid-wrapper';
-
-        // Fullscreen button
-        const btn = document.createElement('button');
-        btn.className = 'mermaid-fullscreen-btn';
-        btn.innerHTML = '<span>&#x26F6;</span> Fullscreen';
-        btn.addEventListener('click', () => openMermaidFullscreen(svg, title));
-
-        // Preview container
-        const preview = document.createElement('div');
-        preview.className = 'mermaid-preview';
-        preview.innerHTML = svg;
-
-        wrapper.appendChild(btn);
-        wrapper.appendChild(preview);
-        pre.replaceWith(wrapper);
-      } catch (e) {
-        console.warn('Mermaid render failed for diagram', id, e);
-        // Show error inline without breaking layout
-        const errWrapper = document.createElement('div');
-        errWrapper.className = 'mermaid-wrapper';
-        errWrapper.style.borderColor = '#ef4444';
-        const errMsg = document.createElement('div');
-        errMsg.style.cssText = 'padding:12px 16px;font-size:12px;color:#ef4444;';
-        errMsg.textContent = 'Mermaid syntax error — showing source';
-        const srcPre = document.createElement('pre');
-        srcPre.style.cssText = 'margin:0;border-radius:0 0 8px 8px;';
-        const srcCode = document.createElement('code');
-        srcCode.textContent = source;
-        srcPre.appendChild(srcCode);
-        errWrapper.appendChild(errMsg);
-        errWrapper.appendChild(srcPre);
-        pre.replaceWith(errWrapper);
-        // Clean up failed render container
-        document.getElementById(id)?.remove();
+        } catch (e) {
+          console.warn("Mermaid render failed for diagram", id, e);
+          // Show error inline without breaking layout
+          const errWrapper = document.createElement("div");
+          errWrapper.className = "mermaid-wrapper";
+          errWrapper.style.borderColor = "#ef4444";
+          const errMsg = document.createElement("div");
+          errMsg.style.cssText =
+            "padding:12px 16px;font-size:12px;color:#ef4444;";
+          errMsg.textContent = "Mermaid syntax error — showing source";
+          const srcPre = document.createElement("pre");
+          srcPre.style.cssText = "margin:0;border-radius:0 0 8px 8px;";
+          const srcCode = document.createElement("code");
+          srcCode.textContent = source;
+          srcPre.appendChild(srcCode);
+          errWrapper.appendChild(errMsg);
+          errWrapper.appendChild(srcPre);
+          pre.replaceWith(errWrapper);
+          // Clean up failed render container
+          document.getElementById(id)?.remove();
+        }
       }
     }
-  }
 
-  function openMermaidFullscreen(svgContent, title) {
-    // Create overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'mermaid-overlay';
+    function openMermaidFullscreen(svgContent, title) {
+      // Create overlay
+      const overlay = document.createElement("div");
+      overlay.className = "mermaid-overlay";
 
-    // Header
-    const header = document.createElement('div');
-    header.className = 'mermaid-overlay-header';
+      // Header
+      const header = document.createElement("div");
+      header.className = "mermaid-overlay-header";
 
-    const titleEl = document.createElement('div');
-    titleEl.className = 'mermaid-overlay-title';
-    titleEl.textContent = title;
+      const titleEl = document.createElement("div");
+      titleEl.className = "mermaid-overlay-title";
+      titleEl.textContent = title;
 
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'mermaid-overlay-close';
-    closeBtn.textContent = 'Close (Esc)';
-    closeBtn.addEventListener('click', () => closeOverlay());
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "mermaid-overlay-close";
+      closeBtn.textContent = "Close (Esc)";
+      closeBtn.addEventListener("click", () => closeOverlay());
 
-    header.appendChild(titleEl);
-    header.appendChild(closeBtn);
+      header.appendChild(titleEl);
+      header.appendChild(closeBtn);
 
-    // Body with SVG
-    const body = document.createElement('div');
-    body.className = 'mermaid-overlay-body';
-    body.innerHTML = svgContent;
+      // Body with SVG
+      const body = document.createElement("div");
+      body.className = "mermaid-overlay-body";
+      body.innerHTML = svgContent;
 
-    // Remove fixed dimensions from SVG so it can scale freely
-    const svg = body.querySelector('svg');
-    if (svg) {
-      svg.removeAttribute('width');
-      svg.style.maxWidth = '95vw';
-      svg.style.height = 'auto';
+      // Remove fixed dimensions from SVG so it can scale freely
+      const svg = body.querySelector("svg");
+      if (svg) {
+        svg.removeAttribute("width");
+        svg.style.maxWidth = "95vw";
+        svg.style.height = "auto";
+      }
+
+      overlay.appendChild(header);
+      overlay.appendChild(body);
+      document.body.appendChild(overlay);
+
+      // Trigger transition
+      requestAnimationFrame(() => overlay.classList.add("visible"));
+
+      // Keyboard close
+      function onKeyDown(e) {
+        if (e.key === "Escape") closeOverlay();
+      }
+      document.addEventListener("keydown", onKeyDown);
+
+      function closeOverlay() {
+        overlay.classList.remove("visible");
+        document.removeEventListener("keydown", onKeyDown);
+        setTimeout(() => overlay.remove(), 200);
+      }
     }
-
-    overlay.appendChild(header);
-    overlay.appendChild(body);
-    document.body.appendChild(overlay);
-
-    // Trigger transition
-    requestAnimationFrame(() => overlay.classList.add('visible'));
-
-    // Keyboard close
-    function onKeyDown(e) {
-      if (e.key === 'Escape') closeOverlay();
-    }
-    document.addEventListener('keydown', onKeyDown);
-
-    function closeOverlay() {
-      overlay.classList.remove('visible');
-      document.removeEventListener('keydown', onKeyDown);
-      setTimeout(() => overlay.remove(), 200);
-    }
-  }
-</script>
-
-</body>
+    </script>
+  </body>
 </html>
