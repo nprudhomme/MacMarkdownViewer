@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.6.0](https://github.com/nprudhomme/MacMarkdownViewer/releases/tag/v0.6.0) - 2026-02-17
+
+### Added
+
+- PDF export via native macOS `WKWebView.createPDF` with save dialog
+- Open single `.md` files directly via CLI, Finder "Open With", or drag & drop
+- macOS file associations for `.md`, `.markdown`, `.mdx` extensions
+- Detect file vs folder CLI arguments automatically
+
 ## [0.5.1](https://github.com/nprudhomme/MacMarkdownViewer/releases/tag/v0.5.1) - 2026-02-16
 
 ### Fixed
