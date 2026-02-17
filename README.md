@@ -28,6 +28,7 @@ A native macOS Markdown viewer built with [Tauri v2](https://v2.tauri.app/). Bro
 - **Relative link navigation** — Click `.md` links to navigate between documents
 - **Dark mode** — Follows macOS system appearance, toggleable manually
 - **Session persistence** — Remembers your last opened folder across launches
+- **PDF export** — Export the current document as PDF with native rendering
 - **CLI support** — Open a folder directly: `mdv ~/docs`
 - **Native menu** — Cmd+O to open a folder, standard macOS app menu
 

@@ -1835,7 +1835,11 @@ checksum = "2532096657941c2fea9c289d370a250971c689d4f143798ff67113ec042024a5"
 name = "mdv"
 version = "0.5.1"
 dependencies = [
+ "block2",
  "log",
+ "objc2",
+ "objc2-foundation",
+ "objc2-web-kit",
  "serde",
  "serde_json",
  "tauri",
