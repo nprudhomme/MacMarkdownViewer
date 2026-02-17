@@ -44,10 +44,10 @@ The built app will be at `src-tauri/target/release/bundle/macos/Markdown Viewer.
 
 ```bash
 # Open a specific folder
-./src-tauri/target/release/mdv ~/my-docs
+mdv ~/my-docs
 
-# Or after installing the .app
-/Applications/Markdown\ Viewer.app/Contents/MacOS/mdv ~/my-docs
+# Open a single file (loads its parent directory in the sidebar)
+mdv ~/my-docs/README.md
 ```
 
 ## Examples
