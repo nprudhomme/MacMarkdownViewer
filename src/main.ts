@@ -287,6 +287,15 @@ async function init(): Promise<void> {
     setRootPath(event.payload);
   });
 
+  // Listen for file open (via "Open With" or CLI with a file path)
+  appWindow.listen<string>("open-file", (event) => {
+    const filePath = event.payload;
+    const lastSep = filePath.lastIndexOf("/");
+    const parentDir = filePath.substring(0, lastSep);
+    const fileName = filePath.substring(lastSep + 1);
+    setRootPath(parentDir, fileName);
+  });
+
   // Listen for menu "Open Folder" (Cmd+O)
   appWindow.listen("menu-open-folder", () => {
     openFolder();
@@ -299,14 +308,21 @@ async function init(): Promise<void> {
   }
 }
 
-async function setRootPath(path: string): Promise<void> {
+async function setRootPath(
+  path: string,
+  fileToOpen?: string
+): Promise<void> {
   rootPath = path;
   rootName = extractRootName(path);
   currentPath = [];
   activeFile = null;
   await saveRootPath(path);
   await renderSidebar();
-  await autoSelectReadme();
+  if (fileToOpen) {
+    await loadFile(fileToOpen);
+  } else {
+    await autoSelectReadme();
+  }
 }
 
 async function openFolder(): Promise<void> {

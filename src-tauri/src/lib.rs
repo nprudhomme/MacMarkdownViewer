@@ -1,3 +1,4 @@
+use std::path::Path;
 use tauri::Emitter;
 use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 
@@ -57,8 +58,8 @@ async fn export_pdf(_output_path: String) -> Result<(), String> {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run(folder_arg: Option<String>) {
-    tauri::Builder::default()
+pub fn run(path_arg: Option<String>) {
+    let app = tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![print_webview, export_pdf])
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
@@ -88,16 +89,24 @@ pub fn run(folder_arg: Option<String>) {
                 }
             });
 
-            // Pass CLI arg to frontend
-            if let Some(ref folder) = folder_arg {
-                let folder = folder.clone();
+            // Pass CLI arg to frontend — detect file vs folder
+            if let Some(ref path_str) = path_arg {
+                let path = Path::new(path_str);
                 let handle = app.handle().clone();
-                // Emit after the window is ready
-                tauri::async_runtime::spawn(async move {
-                    // Small delay to ensure frontend is loaded
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    let _ = handle.emit("open-folder", folder);
-                });
+
+                if path.is_file() {
+                    let file_path = path_str.clone();
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        let _ = handle.emit("open-file", file_path);
+                    });
+                } else if path.is_dir() {
+                    let folder = path_str.clone();
+                    tauri::async_runtime::spawn(async move {
+                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        let _ = handle.emit("open-folder", folder);
+                    });
+                }
             }
 
             if cfg!(debug_assertions) {
@@ -109,6 +118,20 @@ pub fn run(folder_arg: Option<String>) {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { ref urls } = event {
+            for url in urls {
+                if let Ok(path) = url.to_file_path() {
+                    if path.is_file() {
+                        let _ = app_handle.emit("open-file", path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        }
+        let _ = (app_handle, event);
+    });
 }
