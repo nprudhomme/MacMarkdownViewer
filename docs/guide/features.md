@@ -111,6 +111,10 @@ An auto-generated table of contents appears on the right side, built from `h2` a
 
 The app follows macOS system appearance by default. Click the theme toggle button (sun/moon icon) to switch manually. Your preference is persisted across sessions.
 
+## PDF Export
+
+Click the PDF button in the sidebar header to export the current document as a PDF file. The export uses the native macOS `WKWebView.createPDF` API for high-quality rendering. A save dialog opens with a default filename based on the current markdown file. UI elements (sidebar, outline) are hidden during capture so only the document content is exported.
+
 ## Session Persistence
 
 The app remembers the last opened folder and restores it on next launch.
