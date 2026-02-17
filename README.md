@@ -1,8 +1,23 @@
 # MacMarkdownViewer
 
+[![CI](https://github.com/nprudhomme/MacMarkdownViewer/actions/workflows/ci.yml/badge.svg)](https://github.com/nprudhomme/MacMarkdownViewer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Latest Release](https://img.shields.io/github/v/release/nprudhomme/MacMarkdownViewer)](https://github.com/nprudhomme/MacMarkdownViewer/releases/latest)
+[![macOS](https://img.shields.io/badge/platform-macOS-blue)](https://github.com/nprudhomme/MacMarkdownViewer/releases/latest)
+[![Tauri v2](https://img.shields.io/badge/Tauri-v2-orange)](https://v2.tauri.app/)
+
 A native macOS Markdown viewer built with [Tauri v2](https://v2.tauri.app/). Browse folders, read `.md` files with a clean rendered view, navigate between documents, and enjoy a native experience with dark mode support.
 
 > **[Documentation](https://nprudhomme.github.io/MacMarkdownViewer/)**
+
+<p align="center">
+  <img src="screenshots/mixed.png" alt="Mixed content with code and math" width="700">
+</p>
+
+<p align="center">
+  <img src="screenshots/mermaid.png" alt="Mermaid diagrams" width="340">
+  <img src="screenshots/math.png" alt="KaTeX math formulas" width="340">
+</p>
 
 ## Features
 

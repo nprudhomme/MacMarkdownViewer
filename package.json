@@ -1,7 +1,15 @@
 {
   "name": "mdv",
   "version": "1.0.0",
-  "description": "Markdown Viewer",
+  "description": "A lightweight native macOS Markdown viewer with syntax highlighting, math, and Mermaid diagrams",
+  "homepage": "https://nprudhomme.github.io/MacMarkdownViewer/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nprudhomme/MacMarkdownViewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nprudhomme/MacMarkdownViewer/issues"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -12,8 +20,17 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "markdown",
+    "viewer",
+    "macos",
+    "tauri",
+    "mermaid",
+    "katex",
+    "syntax-highlighting",
+    "dark-mode"
+  ],
+  "author": "Nicolas Prud'homme",
   "license": "MIT",
   "type": "module",
   "devDependencies": {
