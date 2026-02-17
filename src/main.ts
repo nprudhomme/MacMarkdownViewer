@@ -2,7 +2,7 @@ import mermaid from "mermaid";
 import "katex/dist/katex.min.css";
 import { resolveResource } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import { readDir, readTextFile } from "@tauri-apps/plugin-fs";
 import { load } from "@tauri-apps/plugin-store";
 import { addCopyButtons, addImageLightbox } from "./dom";
@@ -50,6 +50,36 @@ async function initTheme(): Promise<void> {
     applyTheme(window.matchMedia("(prefers-color-scheme: dark)").matches);
   }
 }
+
+// --- Print / PDF export ---
+
+import { invoke } from "@tauri-apps/api/core";
+
+const printBtn = document.getElementById("print-btn") as HTMLButtonElement;
+printBtn.addEventListener("click", () => {
+  invoke("print_webview");
+});
+
+const pdfBtn = document.getElementById("pdf-btn") as HTMLButtonElement;
+pdfBtn.addEventListener("click", async () => {
+  const defaultName = activeFile
+    ? activeFile.split("/").pop()!.replace(/\.md$/i, ".pdf")
+    : "document.pdf";
+
+  const outputPath = await save({
+    defaultPath: defaultName,
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (!outputPath) return;
+
+  document.body.classList.add("print-mode");
+  try {
+    await new Promise((r) => setTimeout(r, 150));
+    await invoke("export_pdf", { outputPath });
+  } finally {
+    document.body.classList.remove("print-mode");
+  }
+});
 
 themeToggle.addEventListener("click", async () => {
   const newDark = !isDark();

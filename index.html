@@ -85,7 +85,9 @@
       gap: 8px;
     }
 
-    #theme-toggle {
+    #theme-toggle,
+    #print-btn,
+    #pdf-btn {
       background: none;
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -100,7 +102,15 @@
       flex-shrink: 0;
     }
 
-    #theme-toggle:hover {
+    #print-btn,
+    #pdf-btn {
+      display: flex;
+      align-items: center;
+    }
+
+    #theme-toggle:hover,
+    #print-btn:hover,
+    #pdf-btn:hover {
       background: var(--sidebar-hover);
       color: var(--text);
     }
@@ -888,6 +898,103 @@
       max-width: 95vw;
       height: auto;
     }
+
+    /* Print / PDF export */
+    @media print {
+      body {
+        display: block;
+        height: auto;
+        overflow: visible;
+        background: white;
+        color: #1a1a1a;
+      }
+
+      #sidebar,
+      #outline,
+      #empty-state,
+      .copy-btn,
+      .mermaid-fullscreen-btn,
+      #print-btn,
+      #theme-toggle {
+        display: none !important;
+      }
+
+      #content {
+        overflow: visible;
+        padding: 20px 40px;
+      }
+
+      #markdown {
+        display: block !important;
+        max-width: 100%;
+        margin: 0;
+        font-size: 12pt;
+        line-height: 1.6;
+        color: #1a1a1a;
+      }
+
+      #markdown pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        border: 1px solid #ccc;
+        background: #f8f8f8 !important;
+      }
+
+      #markdown pre code {
+        color: #1a1a1a !important;
+      }
+
+      #markdown a {
+        color: #1a1a1a;
+        text-decoration: underline;
+      }
+
+      #markdown img {
+        max-width: 100%;
+        page-break-inside: avoid;
+      }
+
+      #markdown h1,
+      #markdown h2,
+      #markdown h3,
+      #markdown h4 {
+        page-break-after: avoid;
+      }
+
+      #markdown table,
+      #markdown pre,
+      #markdown blockquote {
+        page-break-inside: avoid;
+      }
+
+      .mermaid-wrapper {
+        page-break-inside: avoid;
+        border-color: #ccc;
+      }
+    }
+
+    /* PDF export mode — applied via JS before createPDF capture */
+    body.print-mode #sidebar,
+    body.print-mode #outline,
+    body.print-mode #empty-state,
+    body.print-mode .copy-btn,
+    body.print-mode .mermaid-fullscreen-btn {
+      display: none !important;
+    }
+    body.print-mode {
+      display: block;
+      height: auto;
+      overflow: visible;
+    }
+    body.print-mode #content {
+      overflow: visible;
+      padding: 20px 40px;
+    }
+    body.print-mode #markdown {
+      display: block !important;
+      max-width: 100%;
+      margin: 0;
+    }
     </style>
   </head>
   <body>
@@ -895,6 +1002,12 @@
       <div id="sidebar-header">
         <div id="sidebar-top">
           <h2>Markdown Viewer</h2>
+          <button id="pdf-btn" title="Export to PDF">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+          </button>
+          <button id="print-btn" title="Print">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
           <button id="theme-toggle" title="Toggle dark mode"></button>
         </div>
         <div id="breadcrumb"></div>
