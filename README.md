@@ -63,12 +63,7 @@ The app includes a built-in **View examples** button on the welcome screen that 
 
 ## Download
 
-Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/MacMarkdownViewer/releases) page.
-
-> **Note:** The app is not signed with an Apple Developer certificate. After installing, macOS Gatekeeper may block it. To fix this, run:
-> ```bash
-> xattr -cr "/Applications/Markdown Viewer.app"
-> ```
+Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/MacMarkdownViewer/releases) page. The app is signed and notarized by Apple.
 
 ## Build from Source
 
