@@ -119,6 +119,15 @@ Click the PDF button in the sidebar header to export the current document as a P
 
 The app remembers the last opened folder and restores it on next launch.
 
+## Open Single Files
+
+You can open individual `.md` files directly:
+
+- **CLI**: `mdv ~/docs/README.md`
+- **Finder**: Right-click a `.md` file → "Open With" → Markdown Viewer
+
+The app loads the file and displays its parent directory in the sidebar for easy navigation to related documents. File associations are declared for `.md`, `.markdown`, and `.mdx` extensions.
+
 ## Relative Link Navigation
 
 Click any `.md` link in a document to navigate to that file. Anchor links (`#section`) scroll to the target heading. External links open in the default browser.

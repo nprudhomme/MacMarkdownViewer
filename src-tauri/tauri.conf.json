@@ -42,6 +42,13 @@
     "macOS": {
       "signingIdentity": "Developer ID Application: NICOLAS PATRICK PRUD'HOMME (44DTA694H9)",
       "entitlements": "entitlements.plist"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdx"],
+        "name": "Markdown Document",
+        "role": "Viewer"
+      }
+    ]
   }
 }
