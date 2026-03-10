@@ -1,5 +1,7 @@
 # Features
 
+![Markdown Viewer - Mixed content with code and math](/screenshots/mixed.png)
+
 ## Folder Browsing
 
 Open any folder and navigate its directory tree via the sidebar. The sidebar shows directories first (sorted alphabetically), then `.md` files. Dotfiles and non-Markdown files are filtered out.
@@ -51,6 +53,8 @@ Here is a statement[^1].
 
 ## Math (KaTeX)
 
+![KaTeX math formulas](/screenshots/math.png)
+
 Inline math with `$...$` and display math with `$$...$$`:
 
 ```markdown
@@ -61,6 +65,8 @@ $$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$
 ```
 
 ## Mermaid Diagrams
+
+![Mermaid diagrams](/screenshots/mermaid.png)
 
 Fenced code blocks with the `mermaid` language are rendered as diagrams. Each diagram has a fullscreen button for detailed viewing. Syntax errors show the source code as a fallback.
 
@@ -100,6 +106,8 @@ Over 80 emoji shortcodes are supported:
 ```
 
 ## Image Lightbox
+
+![Image lightbox demo](/screenshots/images.png)
 
 Click any image in the rendered Markdown to open it in a fullscreen overlay. Press **Escape** or click outside the image to close.
 
