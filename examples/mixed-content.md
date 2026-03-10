@@ -100,6 +100,14 @@ class BSTNode<T> {
 | $O(n^2)$ | Quadratic | Bubble sort |
 | $O(2^n)$ | Exponential | Subset enumeration |
 
+## External Links
+
+External links open in your default browser:
+
+- [GitHub - Markdown Viewer](https://github.com/nprudhomme/MacMarkdownViewer) — this project's repository
+- [Marked.js Documentation](https://marked.js.org/) — the markdown parser used by this app
+- [KaTeX](https://katex.org/) — fast math typesetting
+
 ## Progress :rocket:
 
 - [x] Code highlighting :check:

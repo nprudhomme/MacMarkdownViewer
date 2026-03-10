@@ -4,6 +4,7 @@ import { resolveResource } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readDir, readTextFile } from "@tauri-apps/plugin-fs";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { load } from "@tauri-apps/plugin-store";
 import { addCopyButtons, addImageLightbox } from "./dom";
 import { parseMarkdown } from "./markdown";
@@ -308,10 +309,7 @@ async function init(): Promise<void> {
   }
 }
 
-async function setRootPath(
-  path: string,
-  fileToOpen?: string
-): Promise<void> {
+async function setRootPath(path: string, fileToOpen?: string): Promise<void> {
   rootPath = path;
   rootName = extractRootName(path);
   currentPath = [];
@@ -528,8 +526,11 @@ function interceptLinks(currentDir: string[]): void {
     const linkType = classifyLink(href);
 
     if (linkType === "external") {
-      a.target = "_blank";
-      a.rel = "noopener";
+      a.classList.add("external-link");
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        openUrl(href);
+      });
       continue;
     }
 

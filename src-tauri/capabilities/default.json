@@ -10,13 +10,10 @@
     "fs:default",
     "fs:allow-read-text-file",
     "fs:allow-read-dir",
+    "opener:default",
     {
       "identifier": "fs:scope",
-      "allow": [
-        { "path": "**" },
-        { "path": "$HOME/**" },
-        { "path": "/**" }
-      ]
+      "allow": [{ "path": "**" }, { "path": "$HOME/**" }, { "path": "/**" }]
     }
   ]
 }

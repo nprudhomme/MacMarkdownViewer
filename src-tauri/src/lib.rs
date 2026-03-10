@@ -64,6 +64,7 @@ pub fn run(path_arg: Option<String>) {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(move |app| {
             // Build native menu
             let open_folder = MenuItemBuilder::with_id("open_folder", "Open Folder…")

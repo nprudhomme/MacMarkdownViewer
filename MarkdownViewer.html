@@ -285,9 +285,15 @@
     #markdown a {
       color: var(--accent);
       text-decoration: none;
+      cursor: pointer;
     }
     #markdown a:hover {
       text-decoration: underline;
+    }
+    #markdown a.external-link::after {
+      content: "\00a0🌐";
+      font-size: 0.75em;
+      vertical-align: super;
     }
 
     #markdown code {
@@ -853,8 +859,11 @@
         if (!href) return;
 
         if (href.startsWith("http://") || href.startsWith("https://")) {
-          a.target = "_blank";
-          a.rel = "noopener";
+          a.classList.add("external-link");
+          a.addEventListener("click", (e) => {
+            e.preventDefault();
+            window.open(href, "_blank", "noopener");
+          });
           return;
         }
 
