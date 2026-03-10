@@ -9,7 +9,9 @@ export default {
   setup() {
     const route = useRoute();
     const initZoom = () => {
-      mediumZoom(".main img", { background: "var(--vp-c-bg)" });
+      mediumZoom(".main img, .VPHero .VPImage, .screenshot-gallery img", {
+        background: "var(--vp-c-bg)",
+      });
     };
     onMounted(() => {
       initZoom();
