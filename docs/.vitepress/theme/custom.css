@@ -6,6 +6,18 @@
   z-index: 21;
 }
 
+/* Hero image: make it large and prominent */
+.VPHero .VPImage {
+  max-width: 520px !important;
+  max-height: unset !important;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.dark .VPHero .VPImage {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
 /* Screenshot gallery on home page */
 .screenshot-gallery {
   max-width: 900px;

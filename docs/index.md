@@ -5,6 +5,9 @@ hero:
   name: Markdown Viewer
   text: Native macOS documentation viewer
   tagline: Browse folders, render Markdown beautifully, navigate between documents — all in a fast, native app.
+  image:
+    src: /screenshots/mixed.png
+    alt: Markdown Viewer showing mixed content with code and math
   actions:
     - theme: brand
       text: Get Started
