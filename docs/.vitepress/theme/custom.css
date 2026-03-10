@@ -1,0 +1,51 @@
+.medium-zoom-overlay {
+  z-index: 20;
+}
+
+.medium-zoom-image--opened {
+  z-index: 21;
+}
+
+/* Screenshot gallery on home page */
+.screenshot-gallery {
+  max-width: 900px;
+  margin: 2rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 0 1.5rem;
+}
+
+.screenshot-gallery .main-screenshot img {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  cursor: zoom-in;
+}
+
+.screenshot-gallery .screenshot-row {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.screenshot-gallery .screenshot-row img {
+  flex: 1;
+  width: 50%;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  cursor: zoom-in;
+}
+
+/* Feature page screenshots */
+.vp-doc img {
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  cursor: zoom-in;
+  margin: 1.5rem 0;
+}
+
+.dark .screenshot-gallery .main-screenshot img,
+.dark .screenshot-gallery .screenshot-row img,
+.dark .vp-doc img {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}

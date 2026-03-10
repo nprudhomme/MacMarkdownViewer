@@ -5,9 +5,6 @@ hero:
   name: Markdown Viewer
   text: Native macOS documentation viewer
   tagline: Browse folders, render Markdown beautifully, navigate between documents — all in a fast, native app.
-  image:
-    src: /screenshots/mixed.png
-    alt: Markdown Viewer showing mixed content with code and math
   actions:
     - theme: brand
       text: Get Started
@@ -30,3 +27,16 @@ features:
   - title: Native Performance
     details: Built with Tauri v2 and Rust for a lightweight, fast macOS experience.
 ---
+
+<div class="screenshot-gallery">
+  <div class="main-screenshot">
+    <img src="/screenshots/mixed.png" alt="Mixed content with code and math">
+  </div>
+  <div class="screenshot-row">
+    <img src="/screenshots/mermaid.png" alt="Mermaid diagrams">
+    <img src="/screenshots/math.png" alt="KaTeX math formulas">
+  </div>
+  <div class="screenshot-row">
+    <img src="/screenshots/images.png" alt="Image lightbox demo">
+  </div>
+</div>
