@@ -61,3 +61,26 @@
 .dark .vp-doc img {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
+
+/* Footer logo */
+.footer-logo {
+  height: 40px;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.dark .footer-logo {
+  filter: invert(1);
+}
+
+/* Nav logo sizing */
+.VPNavBarTitle img {
+  height: 28px;
+}
+
+.dark .VPNavBarTitle img {
+  filter: invert(1);
+}

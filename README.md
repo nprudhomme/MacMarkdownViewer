@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://www.ekino.fr"><img src="screenshots/ekino-logo.png" alt="ekino" height="50"></a>
+</p>
+
 # MacMarkdownViewer
 
 [![CI](https://github.com/nprudhomme/MacMarkdownViewer/actions/workflows/ci.yml/badge.svg)](https://github.com/nprudhomme/MacMarkdownViewer/actions/workflows/ci.yml)
@@ -134,3 +138,9 @@ mdv ~/my-docs/README.md
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<p align="center">
+  <a href="https://www.ekino.fr"><img src="screenshots/ekino-logo.png" alt="ekino" height="40"></a>
+</p>

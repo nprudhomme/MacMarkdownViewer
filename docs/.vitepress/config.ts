@@ -5,6 +5,7 @@ export default defineConfig({
   description: "Native macOS markdown documentation viewer",
   base: "/MacMarkdownViewer/",
   themeConfig: {
+    logo: "/ekino-logo.png",
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/markdown-support" },
@@ -39,5 +40,10 @@ export default defineConfig({
         link: "https://github.com/nprudhomme/MacMarkdownViewer",
       },
     ],
+    footer: {
+      message:
+        '<a href="https://www.ekino.fr" target="_blank" rel="noopener"><img src="/MacMarkdownViewer/ekino-logo.png" alt="ekino" class="footer-logo"></a>',
+      copyright: "Built by ekino",
+    },
   },
 });
