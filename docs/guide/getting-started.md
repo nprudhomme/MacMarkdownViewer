@@ -2,7 +2,7 @@
 
 ## Download
 
-Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/MacMarkdownViewer/releases) page. The app is signed and notarized by Apple.
+Download the latest `.dmg` from the [Releases](https://github.com/ekino/MarkdownViewer/releases) page. The app is signed and notarized by Apple.
 
 ## Build from Source
 
@@ -16,8 +16,8 @@ Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/Mac
 
 ```bash
 # Clone the repo
-git clone git@github.com:nprudhomme/MacMarkdownViewer.git
-cd MacMarkdownViewer
+git clone git@github.com:ekino/MarkdownViewer.git
+cd MarkdownViewer
 
 # Install dependencies
 npm install

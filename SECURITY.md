@@ -10,7 +10,7 @@ Only the latest release receives security updates.
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it through [GitHub Security Advisories](https://github.com/nprudhomme/MacMarkdownViewer/security/advisories/new).
+If you discover a security vulnerability, please report it through [GitHub Security Advisories](https://github.com/ekino/MarkdownViewer/security/advisories/new).
 
 **Please do not open a public issue for security vulnerabilities.**
 

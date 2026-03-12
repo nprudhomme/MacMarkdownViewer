@@ -14,7 +14,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: Download
-      link: https://github.com/nprudhomme/MacMarkdownViewer/releases
+      link: https://github.com/ekino/MarkdownViewer/releases
 
 features:
   - title: GitHub-Flavored Markdown

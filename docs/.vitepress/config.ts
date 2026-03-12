@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "Markdown Viewer",
   description: "Native macOS markdown documentation viewer",
-  base: "/MacMarkdownViewer/",
+  base: "/MarkdownViewer/",
   themeConfig: {
     logo: "/ekino-logo.png",
     nav: [
@@ -37,12 +37,12 @@ export default defineConfig({
     socialLinks: [
       {
         icon: "github",
-        link: "https://github.com/nprudhomme/MacMarkdownViewer",
+        link: "https://github.com/ekino/MarkdownViewer",
       },
     ],
     footer: {
       message:
-        '<a href="https://www.ekino.fr" target="_blank" rel="noopener"><img src="/MacMarkdownViewer/ekino-logo.png" alt="ekino" class="footer-logo"></a>',
+        '<a href="https://www.ekino.fr" target="_blank" rel="noopener"><img src="/MarkdownViewer/ekino-logo.png" alt="ekino" class="footer-logo"></a>',
       copyright: "Built by ekino",
     },
   },

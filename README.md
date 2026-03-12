@@ -2,17 +2,17 @@
   <a href="https://www.ekino.fr"><img src="screenshots/ekino-logo.png" alt="ekino" height="50"></a>
 </p>
 
-# MacMarkdownViewer
+# MarkdownViewer
 
-[![CI](https://github.com/nprudhomme/MacMarkdownViewer/actions/workflows/ci.yml/badge.svg)](https://github.com/nprudhomme/MacMarkdownViewer/actions/workflows/ci.yml)
+[![CI](https://github.com/ekino/MarkdownViewer/actions/workflows/ci.yml/badge.svg)](https://github.com/ekino/MarkdownViewer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Latest Release](https://img.shields.io/github/v/release/nprudhomme/MacMarkdownViewer)](https://github.com/nprudhomme/MacMarkdownViewer/releases/latest)
-[![macOS](https://img.shields.io/badge/platform-macOS-blue)](https://github.com/nprudhomme/MacMarkdownViewer/releases/latest)
+[![Latest Release](https://img.shields.io/github/v/release/ekino/MarkdownViewer)](https://github.com/ekino/MarkdownViewer/releases/latest)
+[![macOS](https://img.shields.io/badge/platform-macOS-blue)](https://github.com/ekino/MarkdownViewer/releases/latest)
 [![Tauri v2](https://img.shields.io/badge/Tauri-v2-orange)](https://v2.tauri.app/)
 
 A native macOS Markdown viewer built with [Tauri v2](https://v2.tauri.app/). Browse folders, read `.md` files with a clean rendered view, navigate between documents, and enjoy a native experience with dark mode support.
 
-> **[Documentation](https://nprudhomme.github.io/MacMarkdownViewer/)**
+> **[Documentation](https://ekino.github.io/MarkdownViewer/)**
 
 <p align="center">
   <img src="screenshots/mixed.png" alt="Mixed content with code and math" width="700">
@@ -69,7 +69,7 @@ The app includes a built-in **View examples** button on the welcome screen that 
 
 ## Download
 
-Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/MacMarkdownViewer/releases) page. The app is signed and notarized by Apple.
+Download the latest `.dmg` from the [Releases](https://github.com/ekino/MarkdownViewer/releases) page. The app is signed and notarized by Apple.
 
 ## Build from Source
 
@@ -83,8 +83,8 @@ Download the latest `.dmg` from the [Releases](https://github.com/nprudhomme/Mac
 
 ```bash
 # Clone the repo
-git clone git@github.com:nprudhomme/MacMarkdownViewer.git
-cd MacMarkdownViewer
+git clone git@github.com:ekino/MarkdownViewer.git
+cd MarkdownViewer
 
 # Install dependencies
 npm install

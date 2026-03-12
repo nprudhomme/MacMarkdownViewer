@@ -104,7 +104,7 @@ class BSTNode<T> {
 
 External links open in your default browser:
 
-- [GitHub - Markdown Viewer](https://github.com/nprudhomme/MacMarkdownViewer) — this project's repository
+- [GitHub - Markdown Viewer](https://github.com/ekino/MarkdownViewer) — this project's repository
 - [Marked.js Documentation](https://marked.js.org/) — the markdown parser used by this app
 - [KaTeX](https://katex.org/) — fast math typesetting
 

@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for your interest in contributing to MacMarkdownViewer!
+Thanks for your interest in contributing to MarkdownViewer!
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone git@github.com:YOUR_USERNAME/MacMarkdownViewer.git`
+2. Clone your fork: `git clone git@github.com:YOUR_USERNAME/MarkdownViewer.git`
 3. Install dependencies: `npm install`
 4. Start the dev server: `npm run tauri dev`
 
@@ -79,7 +79,7 @@ npm test
 
 ## Reporting Issues
 
-Please open an [issue](https://github.com/nprudhomme/MacMarkdownViewer/issues) with:
+Please open an [issue](https://github.com/ekino/MarkdownViewer/issues) with:
 
 - A clear description of the problem
 - Steps to reproduce

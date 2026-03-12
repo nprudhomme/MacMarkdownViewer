@@ -4,6 +4,6 @@ This project follows the [Contributor Covenant v2.1](https://www.contributor-cov
 
 ## Reporting
 
-If you experience or witness unacceptable behavior, please report it through [GitHub Security Advisories](https://github.com/nprudhomme/MacMarkdownViewer/security/advisories/new).
+If you experience or witness unacceptable behavior, please report it through [GitHub Security Advisories](https://github.com/ekino/MarkdownViewer/security/advisories/new).
 
 All reports will be reviewed and handled with discretion.
