@@ -1,5 +1,6 @@
 import mermaid from "mermaid";
 import "katex/dist/katex.min.css";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -432,6 +433,27 @@ async function autoSelectReadme(): Promise<void> {
   if (readme) await loadFile([...currentPath, readme.name].join("/"));
 }
 
+function isRelativePath(src: string): boolean {
+  return !(
+    src.startsWith("http://") ||
+    src.startsWith("https://") ||
+    src.startsWith("data:") ||
+    src.startsWith("blob:") ||
+    src.startsWith("asset://")
+  );
+}
+
+function resolveImagePaths(container: HTMLElement, filePath: string): void {
+  const dirPath = filePath.substring(0, filePath.lastIndexOf("/"));
+  for (const img of container.querySelectorAll("img")) {
+    const src = img.getAttribute("src");
+    if (src && isRelativePath(src)) {
+      const absolutePath = `${dirPath}/${src}`;
+      img.src = convertFileSrc(absolutePath);
+    }
+  }
+}
+
 async function loadFile(filePath: string): Promise<void> {
   try {
     const fullPath = `${rootPath}/${filePath}`;
@@ -443,6 +465,7 @@ async function loadFile(filePath: string): Promise<void> {
     contentEl.classList.remove("empty");
 
     markdownEl.innerHTML = parseMarkdown(text);
+    resolveImagePaths(markdownEl, fullPath);
     contentEl.scrollTop = 0;
 
     await renderMermaidDiagrams();
