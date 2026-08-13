@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Default permissions for the app",
-  "windows": ["main"],
+  "windows": ["main", "viewer-*"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",

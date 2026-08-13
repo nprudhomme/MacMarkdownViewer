@@ -4,8 +4,15 @@
 
 | Shortcut | Action |
 |---|---|
-| **Cmd+O** | Open folder |
+| **Cmd+O** | Open file |
+| **Shift+Cmd+O** | Open folder |
+| **Cmd+N** | New window (welcome screen) |
+| **Shift+Cmd+N** | Open a folder in a new window |
+| **Cmd+W** | Close the current window |
 | **Cmd+Q** | Quit application |
+
+Windows are independent: each one keeps its own document, outline, search and
+scroll position.
 
 ## Overlays
 

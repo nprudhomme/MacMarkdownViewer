@@ -8,6 +8,22 @@ Open any folder and navigate its directory tree via the sidebar. The sidebar sho
 
 A breadcrumb bar at the top shows your current location and lets you navigate back to parent directories.
 
+## Multiple Windows
+
+Two folders can be read side by side, each in its own window:
+
+- **File › New Window** (`Cmd+N`) opens an empty window on the welcome screen.
+- **File › Open Folder in New Window…** (`Shift+Cmd+N`) picks a folder and opens
+  it in a new window, leaving the current window untouched.
+
+Windows are fully independent — document, outline, search state and scroll
+position are per window.
+
+The recent-files list is shared (the native "Open Recent" submenu is app-wide).
+Preferences (theme, fonts, language) are stored once for the app and applied
+when a window opens, so changing them updates the window you changed them in and
+every window opened afterwards.
+
 ## Markdown Rendering
 
 Full GitHub-Flavored Markdown (GFM) support including:

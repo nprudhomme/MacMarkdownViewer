@@ -1,13 +1,19 @@
+use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
 use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, Submenu, SubmenuBuilder};
-use tauri::{Emitter, Manager, Wry};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, Wry};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum PendingOpen {
     File { path: String },
     Folder { path: String },
+    /// A freshly spawned window with nothing to open: it must show the welcome
+    /// screen instead of restoring the last folder (which would make "New
+    /// Window" a duplicate of the window it was spawned from).
+    Empty,
 }
 
 #[derive(serde::Deserialize)]
@@ -81,18 +87,107 @@ fn update_recent_menu(app: tauri::AppHandle, items: Vec<RecentItem>) -> Result<(
     Ok(())
 }
 
-// Global slot — available from process start, so `RunEvent::Opened` can write
+// Global map — available from process start, so `RunEvent::Opened` can write
 // safely even if it fires before `setup` finishes (which can happen on macOS
 // cold-start via Apple Events).
-static PENDING_OPEN: OnceLock<Mutex<Option<PendingOpen>>> = OnceLock::new();
+//
+// Keyed by window label: each window drains only its own entry, so spawning a
+// second window with its own folder can never steal the main window's pending
+// open (or vice-versa).
+static PENDING_OPEN: OnceLock<Mutex<HashMap<String, PendingOpen>>> = OnceLock::new();
 
-fn pending_slot() -> &'static Mutex<Option<PendingOpen>> {
-    PENDING_OPEN.get_or_init(|| Mutex::new(None))
+const MAIN_WINDOW_LABEL: &str = "main";
+
+fn pending_map() -> &'static Mutex<HashMap<String, PendingOpen>> {
+    PENDING_OPEN.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn set_pending(label: &str, pending: PendingOpen) {
+    if let Ok(mut map) = pending_map().lock() {
+        map.insert(label.to_string(), pending);
+    }
 }
 
 #[tauri::command]
-fn get_pending_open() -> Option<PendingOpen> {
-    pending_slot().lock().ok().and_then(|mut g| g.take())
+fn get_pending_open(window: tauri::Window) -> Option<PendingOpen> {
+    pending_map()
+        .lock()
+        .ok()
+        .and_then(|mut map| map.remove(window.label()))
+}
+
+// Labels for spawned windows. `viewer-*` is allowlisted in
+// capabilities/default.json — a new prefix here needs a matching entry there or
+// the window comes up without any plugin permissions.
+static WINDOW_SEQ: AtomicUsize = AtomicUsize::new(1);
+
+fn next_window_label(app: &tauri::AppHandle) -> String {
+    loop {
+        let n = WINDOW_SEQ.fetch_add(1, Ordering::Relaxed);
+        let label = format!("viewer-{n}");
+        if app.get_webview_window(&label).is_none() {
+            return label;
+        }
+    }
+}
+
+/// Open a new app window, optionally on `path` (a folder or a single file).
+///
+/// Sync on purpose: Tauri runs non-async commands on the main thread, which is
+/// where macOS window creation has to happen.
+#[tauri::command]
+fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<String, String> {
+    let label = next_window_label(&app);
+
+    // Buffer *before* building the window: the frontend pulls its pending open
+    // during init, which can start as soon as the webview exists.
+    let pending = match path.as_deref() {
+        Some(p) if Path::new(p).is_file() => PendingOpen::File { path: p.to_string() },
+        Some(p) if Path::new(p).is_dir() => PendingOpen::Folder { path: p.to_string() },
+        _ => PendingOpen::Empty,
+    };
+    set_pending(&label, pending);
+
+    let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
+        .title("Markdown Viewer")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(800.0, 500.0)
+        .resizable(true);
+
+    #[cfg(target_os = "macos")]
+    {
+        // Mirror the main window's chrome (see app.windows in tauri.conf.json):
+        // the frontend draws its own title bar over the native traffic lights.
+        builder = builder
+            .title_bar_style(tauri::TitleBarStyle::Overlay)
+            .hidden_title(true);
+    }
+
+    // Cascade off the frontmost window so a new window never lands exactly on
+    // top of the one it was spawned from.
+    if let Some(parent) = focused_window(&app) {
+        if let (Ok(pos), Ok(scale)) = (parent.outer_position(), parent.scale_factor()) {
+            let logical = pos.to_logical::<f64>(scale);
+            builder = builder.position(logical.x + 28.0, logical.y + 28.0);
+        }
+    }
+
+    builder.build().map_err(|e| e.to_string())?;
+    Ok(label)
+}
+
+/// The frontmost window, falling back to any window (macOS can dispatch a menu
+/// command while no window holds focus, e.g. right after the last one closed).
+///
+/// `Manager::get_focused_window` would be the direct route, but it sits behind
+/// tauri's `unstable` feature — this walks the stable webview-window map.
+fn focused_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    let windows = app.webview_windows();
+    windows
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .or_else(|| windows.values().next())
+        .cloned()
 }
 
 #[tauri::command]
@@ -340,6 +435,7 @@ pub fn run(path_arg: Option<String>) {
             ping,
             export_pdf,
             get_pending_open,
+            open_new_window,
             list_system_fonts,
             themes_dir,
             list_disk_themes,
@@ -361,6 +457,17 @@ pub fn run(path_arg: Option<String>) {
             let open_folder = MenuItemBuilder::with_id("open_folder", "Open Folder…")
                 .accelerator("CmdOrCtrl+Shift+O")
                 .build(app)?;
+
+            let new_window = MenuItemBuilder::with_id("new_window", "New Window")
+                .accelerator("CmdOrCtrl+N")
+                .build(app)?;
+
+            let open_folder_new_window = MenuItemBuilder::with_id(
+                "open_folder_new_window",
+                "Open Folder in New Window…",
+            )
+            .accelerator("CmdOrCtrl+Shift+N")
+            .build(app)?;
 
             let recent_submenu = SubmenuBuilder::new(app, "Open Recent")
                 .item(
@@ -410,7 +517,9 @@ pub fn run(path_arg: Option<String>) {
                         .quit()
                         .build()?,
                     &SubmenuBuilder::new(app, "File")
-                        .items(&[&open_file, &open_folder])
+                        .items(&[&new_window])
+                        .separator()
+                        .items(&[&open_file, &open_folder, &open_folder_new_window])
                         .item(&recent_submenu)
                         .separator()
                         .items(&[&print_item, &export_pdf_item])
@@ -440,6 +549,19 @@ pub fn run(path_arg: Option<String>) {
             app.on_menu_event(move |_app, event| {
                 let id = event.id().0.as_str();
                 match id {
+                    // Handled entirely in Rust: no window needs to be involved,
+                    // and the new window may be the first one (nothing focused).
+                    "new_window" => {
+                        if let Err(e) = open_new_window(app_handle.clone(), None) {
+                            eprintln!("[menu] new window failed: {e}");
+                        }
+                    }
+                    // The folder picker lives in the frontend (dialog plugin), so
+                    // the window prompts and then asks Rust for a window on the
+                    // chosen folder.
+                    "open_folder_new_window" => {
+                        let _ = app_handle.emit("menu-open-folder-new-window", ());
+                    }
                     "open_file" => {
                         let _ = app_handle.emit("menu-open-file", ());
                     }
@@ -493,9 +615,7 @@ pub fn run(path_arg: Option<String>) {
                     None
                 };
                 if let Some(p) = pending {
-                    if let Ok(mut slot) = pending_slot().lock() {
-                        *slot = Some(p);
-                    }
+                    set_pending(MAIN_WINDOW_LABEL, p);
                 }
             }
 
@@ -527,10 +647,13 @@ pub fn run(path_arg: Option<String>) {
                             let _ = win.unminimize();
                             let _ = win.show();
                             let _ = win.set_focus();
-                        } else if let Ok(mut slot) = pending_slot().lock() {
+                        } else {
                             // Cold-start: Apple Events fired before setup completed.
                             // Buffer so the frontend can pull it on init.
-                            *slot = Some(PendingOpen::File { path: path_str });
+                            set_pending(
+                                MAIN_WINDOW_LABEL,
+                                PendingOpen::File { path: path_str },
+                            );
                         }
                     }
                 }

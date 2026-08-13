@@ -95,6 +95,40 @@ export function findReadme(entries: Entry[]): Entry | undefined {
   );
 }
 
+/** What the Rust `get_pending_open` command buffered for this window. */
+export type PendingOpen =
+  | { kind: "file"; path: string }
+  | { kind: "folder"; path: string }
+  | { kind: "empty" };
+
+/** What a window should display right after init. */
+export type InitialView =
+  | { kind: "file"; path: string }
+  | { kind: "folder"; path: string }
+  | { kind: "welcome" };
+
+/**
+ * Decide what a window shows on startup.
+ *
+ * A pending open (CLI arg, Finder "Open With", or a folder handed to a freshly
+ * spawned window) always wins over the persisted folder, so the user never sees
+ * a flash of the previous folder. `kind: "empty"` is the marker for a window
+ * spawned by "New Window": it must land on the welcome screen rather than
+ * restoring `lastFolder`, otherwise it would just clone the window it came from.
+ */
+export function resolveInitialView(
+  pending: PendingOpen | null,
+  savedFolder: string | null
+): InitialView {
+  if (pending) {
+    if (pending.kind === "file") return { kind: "file", path: pending.path };
+    if (pending.kind === "folder") return { kind: "folder", path: pending.path };
+    return { kind: "welcome" };
+  }
+  if (savedFolder) return { kind: "folder", path: savedFolder };
+  return { kind: "welcome" };
+}
+
 export type RecentEntry = { path: string; kind: "file" | "folder" };
 
 /**
