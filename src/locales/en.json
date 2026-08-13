@@ -102,5 +102,9 @@
   "code.copied": "Copied!",
   "slowRead.message": "This file took a long time to open. This folder looks cloud-synced (OneDrive, iCloud…): \"online-only\" files are downloaded on first read. Move your documents to a local folder to speed things up.",
   "slowRead.dismiss": "Dismiss",
-  "loadError.message": "Could not open {file}. The file may have been moved, or it sits outside the folder you opened."
+  "loadError.message": "Could not open {file}. The file may have been moved, or it sits outside the folder you opened.",
+  "prefs.general.finderOpen.title": "Opening from Finder",
+  "prefs.general.finderOpen.hint": "When a document is already open",
+  "prefs.finderOpen.newWindow": "New window",
+  "prefs.finderOpen.reuse": "Current window"
 }

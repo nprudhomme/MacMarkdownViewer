@@ -102,5 +102,9 @@
   "code.copied": "Copié !",
   "slowRead.message": "Ce fichier a mis longtemps à s'ouvrir. Ce dossier semble synchronisé dans le cloud (OneDrive, iCloud…) : les fichiers « en ligne uniquement » se téléchargent à la première lecture. Déplacez vos documents dans un dossier local pour accélérer.",
   "slowRead.dismiss": "Masquer",
-  "loadError.message": "Impossible d'ouvrir {file}. Le fichier a peut-être été déplacé, ou il se trouve hors du dossier que vous avez ouvert."
+  "loadError.message": "Impossible d'ouvrir {file}. Le fichier a peut-être été déplacé, ou il se trouve hors du dossier que vous avez ouvert.",
+  "prefs.general.finderOpen.title": "Ouverture depuis le Finder",
+  "prefs.general.finderOpen.hint": "Quand un document est déjà ouvert",
+  "prefs.finderOpen.newWindow": "Nouvelle fenêtre",
+  "prefs.finderOpen.reuse": "Fenêtre actuelle"
 }

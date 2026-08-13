@@ -1,6 +1,8 @@
 export type Appearance = "system" | "light" | "dark";
 export type FontSize = "small" | "medium" | "large";
 export type OutlinePref = "auto" | "always" | "hidden";
+/** What happens when a document is opened from Finder while a window is open. */
+export type FinderOpenPref = "new-window" | "reuse";
 
 export const APPEARANCE_VALUES: readonly Appearance[] = [
   "system",
@@ -17,10 +19,15 @@ export const OUTLINE_VALUES: readonly OutlinePref[] = [
   "always",
   "hidden",
 ];
+export const FINDER_OPEN_VALUES: readonly FinderOpenPref[] = [
+  "new-window",
+  "reuse",
+];
 
 export const APPEARANCE_KEY = "appearance";
 export const FONTSIZE_KEY = "fontSize";
 export const OUTLINE_PREF_KEY = "outlinePref";
+export const FINDER_OPEN_KEY = "finderOpenPref";
 export const LEGACY_THEME_KEY = "theme";
 
 export const BODY_FONT_KEY = "bodyFontFamily";
@@ -144,6 +151,21 @@ export function resolveInitialAppearance(
 
 export function resolveInitialFontSize(value: unknown): FontSize {
   return isFontSize(value) ? value : "medium";
+}
+
+export function isFinderOpenPref(value: unknown): value is FinderOpenPref {
+  return (
+    typeof value === "string" &&
+    (FINDER_OPEN_VALUES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Defaults to opening a new window, matching how macOS document viewers behave:
+ * opening a file from Finder should not discard what the current window shows.
+ */
+export function resolveInitialFinderOpenPref(value: unknown): FinderOpenPref {
+  return isFinderOpenPref(value) ? value : "new-window";
 }
 
 export function resolveInitialOutlinePref(value: unknown): OutlinePref {
