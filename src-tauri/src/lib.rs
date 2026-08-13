@@ -535,20 +535,33 @@ async fn document_mtime(path: String) -> Result<u64, String> {
 // is ~1ms). A sync command would run on the main thread and freeze the UI; an
 // async command runs off it, so the window stays responsive during the read.
 //
-// Confined to the user's home dir or the bundled resource dir (examples):
-// canonicalize resolves `..`/symlinks, then we require the result to sit under
-// an allowed root. Errors stay generic to avoid leaking paths.
+// Confined to the folder the user opened, plus the bundled resource dir for the
+// built-in examples. `root` is the folder the window is currently browsing, so
+// a document can only ever pull in files the user already granted access to by
+// opening that folder — a crafted relative link cannot escape it.
+//
+// Confining to the *home* dir instead (as this did until 0.11.1) got the threat
+// model backwards: it allowed ~/.ssh and ~/.aws while refusing every folder
+// outside home, so opening anything under /tmp, /Volumes or a repo cloned
+// elsewhere failed even though the sidebar listed it fine.
+//
+// canonicalize resolves `..`/symlinks on both sides before comparing. Errors
+// stay generic to avoid leaking paths.
 #[tauri::command]
-async fn read_document(app: tauri::AppHandle, path: String) -> Result<String, String> {
+async fn read_document(
+    app: tauri::AppHandle,
+    path: String,
+    root: String,
+) -> Result<String, String> {
     let requested =
         std::fs::canonicalize(&path).map_err(|_| "cannot resolve path".to_string())?;
 
-    let roots = [app.path().home_dir(), app.path().resource_dir()]
+    let roots = [std::fs::canonicalize(&root).ok(), app.path().resource_dir().ok()]
         .into_iter()
         .flatten()
         .filter_map(|p| std::fs::canonicalize(p).ok());
-    if !roots.into_iter().any(|root| requested.starts_with(&root)) {
-        return Err("path outside allowed roots".to_string());
+    if !roots.into_iter().any(|allowed| requested.starts_with(&allowed)) {
+        return Err("path outside the opened folder".to_string());
     }
 
     let t = std::time::Instant::now();

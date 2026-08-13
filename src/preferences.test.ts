@@ -3,6 +3,8 @@ import {
   resolveDark,
   resolveInitialAppearance,
   resolveInitialFontSize,
+  isFinderOpenPref,
+  resolveInitialFinderOpenPref,
   resolveInitialOutlinePref,
   resolveInitialFontWeight,
   resolveInitialFontFamily,
@@ -332,5 +334,28 @@ describe("advanced DOM appliers — CSS variables", () => {
     expect(root.style.getPropertyValue("--md-body-size")).toBe("18px");
     applyCustomFontSizeToDOM(root, null);
     expect(root.style.getPropertyValue("--md-body-size")).toBe("");
+  });
+});
+
+describe("resolveInitialFinderOpenPref", () => {
+  it("keeps a valid stored value", () => {
+    expect(resolveInitialFinderOpenPref("reuse")).toBe("reuse");
+    expect(resolveInitialFinderOpenPref("new-window")).toBe("new-window");
+  });
+
+  // Opening a Finder document must not discard what the current window shows,
+  // which is what macOS document viewers do.
+  it("defaults to opening a new window", () => {
+    expect(resolveInitialFinderOpenPref(undefined)).toBe("new-window");
+    expect(resolveInitialFinderOpenPref(null)).toBe("new-window");
+    expect(resolveInitialFinderOpenPref("nope")).toBe("new-window");
+    expect(resolveInitialFinderOpenPref(42)).toBe("new-window");
+  });
+
+  it("recognises exactly the two supported values", () => {
+    expect(isFinderOpenPref("new-window")).toBe(true);
+    expect(isFinderOpenPref("reuse")).toBe(true);
+    expect(isFinderOpenPref("newwindow")).toBe(false);
+    expect(isFinderOpenPref("")).toBe(false);
   });
 });

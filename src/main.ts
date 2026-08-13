@@ -31,6 +31,7 @@ import {
   FONT_WEIGHT_KEY,
   MAX_CUSTOM_FONT_SIZE,
   MIN_CUSTOM_FONT_SIZE,
+  FINDER_OPEN_KEY,
   OUTLINE_PREF_KEY,
   applyBodyFontToDOM,
   applyCodeFontToDOM,
@@ -41,9 +42,11 @@ import {
   resolveInitialCustomFontSize,
   resolveInitialFontFamily,
   resolveInitialFontSize,
+  resolveInitialFinderOpenPref,
   resolveInitialFontWeight,
   resolveInitialOutlinePref,
   setSegmentActive,
+  type FinderOpenPref,
   type FontSize,
   type FontWeight,
   type OutlinePref,
@@ -101,6 +104,7 @@ let currentBodyFont: string | null = null;
 let currentCodeFont: string | null = null;
 let currentFontWeight: FontWeight | null = null;
 let currentCustomFontSize: number | null = null;
+let finderOpenPref: FinderOpenPref = "new-window";
 const systemDarkMQ = window.matchMedia("(prefers-color-scheme: dark)");
 
 function isDark(): boolean {
@@ -180,6 +184,9 @@ async function initTheme(): Promise<void> {
   );
   currentCustomFontSize = resolveInitialCustomFontSize(
     await store.get(CUSTOM_FONT_SIZE_KEY)
+  );
+  finderOpenPref = resolveInitialFinderOpenPref(
+    await store.get(FINDER_OPEN_KEY)
   );
 
   applyActiveTheme();
@@ -415,6 +422,10 @@ const slowReadNotice = document.getElementById(
 const slowReadDismiss = document.getElementById(
   "slow-read-dismiss"
 ) as HTMLButtonElement;
+const loadError = document.getElementById("load-error") as HTMLDivElement;
+const loadErrorText = document.getElementById(
+  "load-error-text"
+) as HTMLSpanElement;
 const openBtn = document.getElementById("open-btn") as HTMLButtonElement;
 const examplesBtn = document.getElementById(
   "examples-btn"
@@ -666,6 +677,9 @@ const prefsFontSize = document.getElementById(
   "prefs-fontsize"
 ) as HTMLSelectElement;
 const prefsOutline = document.getElementById("prefs-outline") as HTMLDivElement;
+const prefsFinderOpen = document.getElementById(
+  "prefs-finder-open"
+) as HTMLDivElement;
 const prefsTabs = document.querySelectorAll<HTMLButtonElement>(".prefs-tab");
 const prefsTabPanels =
   document.querySelectorAll<HTMLDivElement>(".prefs-tab-panel");
@@ -778,6 +792,7 @@ function syncPrefsUI(): void {
     prefsOutline,
     (document.documentElement.dataset.outline as OutlinePref) ?? "auto"
   );
+  setSegmentActive(prefsFinderOpen, finderOpenPref);
   prefsBodyFont.value = currentBodyFont ?? "";
   prefsCodeFont.value = currentCodeFont ?? "";
   prefsFontWeight.value = currentFontWeight ?? "";
@@ -1417,6 +1432,17 @@ function initPreferences(): void {
     });
   }
 
+  for (const btn of prefsFinderOpen.querySelectorAll<HTMLButtonElement>(
+    "button"
+  )) {
+    btn.addEventListener("click", async () => {
+      const value = btn.dataset.value as FinderOpenPref;
+      finderOpenPref = value;
+      setSegmentActive(prefsFinderOpen, value);
+      await savePref(FINDER_OPEN_KEY, value);
+    });
+  }
+
   prefsAdvancedToggle.addEventListener("click", () => {
     const open = !prefsAdvanced.classList.contains("visible");
     setAdvancedOpen(open);
@@ -1499,6 +1525,17 @@ async function init(): Promise<void> {
     setRootPath(event.payload);
   });
   appWindow.listen<string>("open-file", (event) => {
+    // The backend routes this to the frontmost window only. Reusing it would
+    // discard whatever that window was showing, so by default hand the document
+    // to a new window — unless this one is still on the welcome screen, where
+    // spawning would just leave an empty window behind.
+    if (finderOpenPref === "new-window" && activeFile !== null) {
+      void invoke("open_new_window", { path: event.payload }).catch((e) => {
+        console.warn("Failed to open a new window, reusing this one:", e);
+        openFileFromPath(event.payload);
+      });
+      return;
+    }
     openFileFromPath(event.payload);
   });
   appWindow.listen("menu-open-folder", () => {
@@ -1774,7 +1811,12 @@ async function readDocumentText(
     return { text: cached.text, slow: false };
   }
   const start = performance.now();
-  const text = await invoke<string>("read_document", { path: fullPath });
+  // `root` is the access the user granted by opening this folder; the backend
+  // refuses anything outside it.
+  const text = await invoke<string>("read_document", {
+    path: fullPath,
+    root: rootPath,
+  });
   const slow = performance.now() - start >= SLOW_READ_MS;
   if (mtime !== null) {
     docCache.set(fullPath, { mtime, text });
@@ -1793,6 +1835,7 @@ async function loadFile(filePath: string): Promise<void> {
     }
     const tPing1 = performance.now();
 
+    loadError.hidden = true;
     showLoadingSoon();
     const tRead0 = performance.now();
     let text: string;
@@ -1857,6 +1900,15 @@ async function loadFile(filePath: string): Promise<void> {
     });
   } catch (e) {
     console.error("Failed to load file:", filePath, e);
+    // Surface the failure. A console-only error made a whole class of unopenable
+    // files look like an unresponsive click: the sidebar listed them, selecting
+    // one simply did nothing.
+    hideLoading();
+    loadErrorText.textContent = t("loadError.message").replace(
+      "{file}",
+      filePath.split("/").pop() ?? filePath
+    );
+    loadError.hidden = false;
   }
 }
 

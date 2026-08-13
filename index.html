@@ -1902,6 +1902,22 @@
       line-height: 1.45;
     }
     #slow-read-notice[hidden] { display: none; }
+
+    /* Same shape as the slow-read notice, in an error tone. */
+    #load-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0 0 24px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-left: 3px solid #dc2626;
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    #load-error[hidden] { display: none; }
     #slow-read-notice .srn-text { flex: 1; }
     #slow-read-notice .srn-close {
       flex: none;
@@ -2048,6 +2064,9 @@
               View examples
             </button>
           </div>
+        </div>
+        <div id="load-error" hidden>
+          <span class="srn-text" id="load-error-text"></span>
         </div>
         <div id="slow-read-notice" hidden>
           <span class="srn-text" data-i18n="slowRead.message"></span>
@@ -2447,6 +2466,24 @@
                 </button>
                 <button type="button" data-value="hidden" data-i18n="prefs.outline.hidden">
                   Caché
+                </button>
+              </div>
+            </div>
+            <div class="prefs-row">
+              <div class="prefs-label">
+                <span class="prefs-label-title" data-i18n="prefs.general.finderOpen.title">
+                  Ouverture depuis le Finder
+                </span>
+                <span class="prefs-label-hint" data-i18n="prefs.general.finderOpen.hint">
+                  Quand un document est déjà ouvert
+                </span>
+              </div>
+              <div class="prefs-segment" id="prefs-finder-open" role="radiogroup">
+                <button type="button" data-value="new-window" data-i18n="prefs.finderOpen.newWindow">
+                  Nouvelle fenêtre
+                </button>
+                <button type="button" data-value="reuse" data-i18n="prefs.finderOpen.reuse">
+                  Fenêtre actuelle
                 </button>
               </div>
             </div>
