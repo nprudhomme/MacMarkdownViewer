@@ -84,6 +84,7 @@ import {
   parseMarkdownHref,
   resolveInitialView,
   resolvePath,
+  windowTitle,
 } from "./utils";
 
 // --- Theme & preferences management ---
@@ -440,6 +441,18 @@ const searchOptDiacritics = document.getElementById(
 const searchOptWholeWord = document.getElementById(
   "search-opt-wholeword"
 ) as HTMLInputElement;
+
+const appWindow = getCurrentWindow();
+
+// Keeps the native window title in sync with what the window shows. The title is
+// hidden in our custom title bar; it exists so this window is identifiable in the
+// native Window menu, which is why renaming goes through the Rust command that
+// also refreshes that menu.
+function syncWindowTitle(): void {
+  void invoke("set_window_title", {
+    title: windowTitle(activeFile, rootName),
+  }).catch((e) => console.warn("Failed to set the window title:", e));
+}
 
 let rootPath: string | null = null;
 let rootName = "";
@@ -1465,7 +1478,6 @@ async function init(): Promise<void> {
   await initTheme();
   initSearch();
   initPreferences();
-  const appWindow = getCurrentWindow();
 
   // Runtime opens (hot-start file association, "Open With", CLI events)
   appWindow.listen<string>("open-folder", (event) => {
@@ -1594,6 +1606,7 @@ async function renderSidebar(): Promise<void> {
     emptyState.style.display = "block";
     contentEl.classList.add("empty");
     titlebarFilename.textContent = "";
+    syncWindowTitle();
     setSearchEnabled(false);
   }
 
@@ -1810,6 +1823,7 @@ async function loadFile(filePath: string): Promise<void> {
     const t6 = performance.now();
 
     titlebarFilename.textContent = filePath.split("/").pop() ?? "";
+    syncWindowTitle();
     setSearchEnabled(true);
     searchController?.reset();
 

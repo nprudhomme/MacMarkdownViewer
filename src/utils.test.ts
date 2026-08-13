@@ -9,6 +9,7 @@ import {
   findReadme,
   mergeRecent,
   resolveInitialView,
+  windowTitle,
 } from "./utils";
 import type { RecentEntry } from "./utils";
 
@@ -308,5 +309,23 @@ describe("resolveInitialView", () => {
 
   it("shows the welcome screen with no pending open and no saved folder", () => {
     expect(resolveInitialView(null, null)).toEqual({ kind: "welcome" });
+  });
+});
+
+describe("windowTitle", () => {
+  it("uses the open document's file name", () => {
+    expect(windowTitle("guide/api.md", "docs")).toBe("api.md");
+  });
+
+  it("uses the file name for a root-level document", () => {
+    expect(windowTitle("README.md", "docs")).toBe("README.md");
+  });
+
+  it("falls back to the folder name when no document is open", () => {
+    expect(windowTitle(null, "docs")).toBe("docs");
+  });
+
+  it("falls back to the app name on the welcome screen", () => {
+    expect(windowTitle(null, "")).toBe("Markdown Viewer");
   });
 });

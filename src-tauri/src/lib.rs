@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
-use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, Submenu, SubmenuBuilder};
+use tauri::menu::{
+    CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, Submenu, SubmenuBuilder,
+};
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, Wry};
 
 #[derive(Clone, serde::Serialize)]
@@ -85,6 +87,103 @@ fn update_recent_menu(app: tauri::AppHandle, items: Vec<RecentItem>) -> Result<(
         .map_err(|e| e.to_string())?;
     submenu.append(&clear).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// Handle to the "Window" submenu, whose tail is one entry per open window.
+//
+// macOS can populate a Window menu on its own (`setWindowsMenu:`), but AppKit
+// only adopts windows it sees created after that call — our main window already
+// exists by then, and tao's windows never got added at all. So the list is built
+// here and refreshed on every event that can change it: window opened, closed,
+// focused, or renamed by the frontend.
+static WINDOW_SUBMENU: OnceLock<Mutex<Option<Submenu<Wry>>>> = OnceLock::new();
+
+const WINDOW_ITEM_PREFIX: &str = "window:";
+
+fn window_slot() -> &'static Mutex<Option<Submenu<Wry>>> {
+    WINDOW_SUBMENU.get_or_init(|| Mutex::new(None))
+}
+
+/// Order windows the way the user created them: the original window first, then
+/// the spawned ones by number (so `viewer-10` sorts after `viewer-9`).
+fn window_sort_key(label: &str) -> (u8, u32, String) {
+    if label == MAIN_WINDOW_LABEL {
+        return (0, 0, String::new());
+    }
+    let n = label
+        .rsplit('-')
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(u32::MAX);
+    (1, n, label.to_string())
+}
+
+fn rebuild_window_menu(app: &tauri::AppHandle) -> Result<(), String> {
+    let guard = window_slot().lock().map_err(|e| e.to_string())?;
+    let Some(submenu) = guard.as_ref() else {
+        return Ok(()); // menu not built yet — setup will do the first pass
+    };
+
+    let count = submenu.items().map_err(|e| e.to_string())?.len();
+    for _ in 0..count {
+        submenu.remove_at(0).map_err(|e| e.to_string())?;
+    }
+
+    let minimize = PredefinedMenuItem::minimize(app, None).map_err(|e| e.to_string())?;
+    let zoom = PredefinedMenuItem::maximize(app, None).map_err(|e| e.to_string())?;
+    let fullscreen = PredefinedMenuItem::fullscreen(app, None).map_err(|e| e.to_string())?;
+    let close = PredefinedMenuItem::close_window(app, None).map_err(|e| e.to_string())?;
+    let sep1 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    let sep2 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    for item in [
+        &minimize as &dyn tauri::menu::IsMenuItem<Wry>,
+        &zoom,
+        &sep1,
+        &fullscreen,
+        &close,
+        &sep2,
+    ] {
+        submenu.append(item).map_err(|e| e.to_string())?;
+    }
+
+    let mut windows: Vec<_> = app
+        .webview_windows()
+        .into_iter()
+        .map(|(label, win)| {
+            let title = win.title().unwrap_or_default();
+            let focused = win.is_focused().unwrap_or(false);
+            (label, title, focused)
+        })
+        .collect();
+    windows.sort_by(|a, b| window_sort_key(&a.0).cmp(&window_sort_key(&b.0)));
+
+    for (label, title, focused) in windows {
+        let text = if title.is_empty() {
+            "Markdown Viewer".to_string()
+        } else {
+            title
+        };
+        let item = CheckMenuItemBuilder::with_id(format!("{WINDOW_ITEM_PREFIX}{label}"), text)
+            .checked(focused)
+            .build(app)
+            .map_err(|e| e.to_string())?;
+        submenu.append(&item).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Rename this window and refresh its entry in the Window menu.
+///
+/// Goes through an app command rather than the frontend calling `setTitle`
+/// directly, so the menu can never drift from the actual titles.
+#[tauri::command]
+fn set_window_title(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    title: String,
+) -> Result<(), String> {
+    window.set_title(&title).map_err(|e| e.to_string())?;
+    rebuild_window_menu(&app)
 }
 
 // Global map — available from process start, so `RunEvent::Opened` can write
@@ -173,6 +272,9 @@ fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<String
     }
 
     builder.build().map_err(|e| e.to_string())?;
+    // The new window has no title of its own until its frontend loads a
+    // document; listing it right away keeps the menu honest in the meantime.
+    let _ = rebuild_window_menu(&app);
     Ok(label)
 }
 
@@ -449,6 +551,7 @@ pub fn run(path_arg: Option<String>) {
             export_pdf,
             get_pending_open,
             open_new_window,
+            set_window_title,
             list_system_fonts,
             themes_dir,
             list_disk_themes,
@@ -512,6 +615,13 @@ pub fn run(path_arg: Option<String>) {
                 .accelerator("CmdOrCtrl+F")
                 .build(app)?;
 
+            // Contents are filled in by rebuild_window_menu once the handle is
+            // stored below; it appends the fixed items plus one entry per window.
+            let window_menu = SubmenuBuilder::new(app, "Window").build()?;
+            if let Ok(mut slot) = window_slot().lock() {
+                *slot = Some(window_menu.clone());
+            }
+
             let app_name = app.package_info().name.clone();
 
             let menu = MenuBuilder::new(app)
@@ -553,10 +663,15 @@ pub fn run(path_arg: Option<String>) {
                     &SubmenuBuilder::new(app, "View")
                         .items(&[&toggle_theme])
                         .build()?,
+                    &window_menu,
                 ])
                 .build()?;
 
             app.set_menu(menu)?;
+
+            if let Err(e) = rebuild_window_menu(app.handle()) {
+                eprintln!("[menu] initial window list failed: {e}");
+            }
 
             let app_handle = app.handle().clone();
             app.on_menu_event(move |_app, event| {
@@ -598,6 +713,19 @@ pub fn run(path_arg: Option<String>) {
                     }
                     "recent_clear" => {
                         emit_to_focused(&app_handle, "menu-clear-recent", ());
+                    }
+                    // One entry per open window: bring the picked one forward.
+                    _ if id.starts_with(WINDOW_ITEM_PREFIX) => {
+                        let label = &id[WINDOW_ITEM_PREFIX.len()..];
+                        if let Some(win) = app_handle.get_webview_window(label) {
+                            let _ = win.unminimize();
+                            let _ = win.show();
+                            let _ = win.set_focus();
+                        }
+                        // Focus moved, so the checkmark has to move with it. The
+                        // Focused event does this too, but rebuilding here keeps
+                        // the menu right even if focus is refused.
+                        let _ = rebuild_window_menu(&app_handle);
                     }
                     _ if id.starts_with(RECENT_FILE_PREFIX) => {
                         let path = id[RECENT_FILE_PREFIX.len()..].to_string();
@@ -647,6 +775,16 @@ pub fn run(path_arg: Option<String>) {
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
+        // Keep the Window menu's list and checkmark in step with reality.
+        if let tauri::RunEvent::WindowEvent { ref event, .. } = event {
+            if matches!(
+                event,
+                tauri::WindowEvent::Destroyed | tauri::WindowEvent::Focused(true)
+            ) {
+                let _ = rebuild_window_menu(app_handle);
+            }
+        }
+
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { ref urls } = event {
             for url in urls {

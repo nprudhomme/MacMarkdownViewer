@@ -16,6 +16,10 @@ Two folders can be read side by side, each in its own window:
 - **File › Open Folder in New Window…** (`Shift+Cmd+N`) picks a folder and opens
   it in a new window, leaving the current window untouched.
 
+The **Window** menu lists every open window and switches to the one you pick
+(the active one is checked). Each window is named after the document it shows —
+or its folder when no document is open yet — so the list stays readable.
+
 Windows are fully independent — document, outline, search state and scroll
 position are per window. Menu commands and their shortcuts (Find, Print, Export
 as PDF, Open Recent, Toggle Dark Mode…) act on the frontmost window only.

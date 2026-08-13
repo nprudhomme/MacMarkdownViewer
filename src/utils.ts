@@ -129,6 +129,25 @@ export function resolveInitialView(
   return { kind: "welcome" };
 }
 
+export const DEFAULT_WINDOW_TITLE = "Markdown Viewer";
+
+/**
+ * Native title for a window, used by the macOS Window menu to label the entry
+ * it adds per window (the title itself stays hidden in the custom title bar).
+ *
+ * Most specific thing first: the open document, else the folder being browsed,
+ * else the app name for a window still on the welcome screen.
+ */
+export function windowTitle(
+  activeFile: string | null,
+  rootName: string
+): string {
+  const fileName = activeFile?.split("/").pop();
+  if (fileName) return fileName;
+  if (rootName) return rootName;
+  return DEFAULT_WINDOW_TITLE;
+}
+
 export type RecentEntry = { path: string; kind: "file" | "folder" };
 
 /**
