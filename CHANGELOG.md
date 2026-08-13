@@ -13,10 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - In-memory document cache keyed by path + mtime so re-opening a document is instant, without serving stale content after an external edit
 - Loading spinner (shown after a 150ms delay to avoid flashing on fast reads) and a one-time dismissible notice when an uncached read exceeds 600ms, explaining the likely cloud-sync cause (FR + EN)
 - Debug HUD (⌘/Ctrl+Shift+D) showing live FPS and per-phase document-open timings (ipc, read, parse, images, mermaid, dom, outline, total) with click-to-copy
+- Multi-window support: File › New Window (⌘N) opens an empty window and File › Open Folder in New Window… (⇧⌘N) opens a picked folder in its own window, so two sets of docs can be read side by side
+- Native Window menu listing every open window (checked on the frontmost, select to bring forward), with windows titled after the document or folder they show
+- Window arrangement commands: Fill, Center, Move & Resize (halves, quarters, Return to Previous Size) and Bring All to Front
 
 ### Changed
 
 - Documents are read through a dedicated async Rust command (`read_document`, confined to home/resource dirs with canonicalization) instead of the fs plugin, keeping slow reads off the UI thread — fixes multi-second freezes when opening cloud-synced (e.g. OneDrive on-demand) files
+- Menu commands now target the frontmost window instead of broadcasting to every window, so ⌘F no longer focuses several search fields and Open Folder… no longer raises several pickers
 
 ### Fixed
 
