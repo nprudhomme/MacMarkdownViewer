@@ -12,7 +12,8 @@
 | **Cmd+Q** | Quit application |
 
 Windows are independent: each one keeps its own document, outline, search and
-scroll position.
+scroll position. Menu commands (Find, Print, Export as PDF, Open Recent…) always
+apply to the frontmost window.
 
 ## Overlays
 

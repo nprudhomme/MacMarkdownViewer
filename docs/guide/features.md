@@ -17,7 +17,8 @@ Two folders can be read side by side, each in its own window:
   it in a new window, leaving the current window untouched.
 
 Windows are fully independent — document, outline, search state and scroll
-position are per window.
+position are per window. Menu commands and their shortcuts (Find, Print, Export
+as PDF, Open Recent, Toggle Dark Mode…) act on the frontmost window only.
 
 The recent-files list is shared (the native "Open Recent" submenu is app-wide).
 Preferences (theme, fonts, language) are stored once for the app and applied

@@ -190,6 +190,19 @@ fn focused_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
         .cloned()
 }
 
+// Menu commands act on the frontmost window only. A plain `emit` broadcasts to
+// every webview, so with two windows open a single ⌘F (or "Open Folder…") would
+// fire in both — two folder pickers, two focused search fields.
+fn emit_to_focused<S: serde::Serialize + Clone>(
+    app: &tauri::AppHandle,
+    event: &str,
+    payload: S,
+) {
+    if let Some(win) = focused_window(app) {
+        let _ = app.emit_to(win.label(), event, payload);
+    }
+}
+
 #[tauri::command]
 fn print_webview(webview: tauri::Webview) -> Result<(), String> {
     webview.print().map_err(|e| e.to_string())
@@ -560,42 +573,44 @@ pub fn run(path_arg: Option<String>) {
                     // the window prompts and then asks Rust for a window on the
                     // chosen folder.
                     "open_folder_new_window" => {
-                        let _ = app_handle.emit("menu-open-folder-new-window", ());
+                        emit_to_focused(&app_handle, "menu-open-folder-new-window", ());
                     }
                     "open_file" => {
-                        let _ = app_handle.emit("menu-open-file", ());
+                        emit_to_focused(&app_handle, "menu-open-file", ());
                     }
                     "open_folder" => {
-                        let _ = app_handle.emit("menu-open-folder", ());
+                        emit_to_focused(&app_handle, "menu-open-folder", ());
                     }
                     "print" => {
-                        let _ = app_handle.emit("menu-print", ());
+                        emit_to_focused(&app_handle, "menu-print", ());
                     }
                     "export_pdf" => {
-                        let _ = app_handle.emit("menu-export-pdf", ());
+                        emit_to_focused(&app_handle, "menu-export-pdf", ());
                     }
                     "toggle_theme" => {
-                        let _ = app_handle.emit("menu-toggle-theme", ());
+                        emit_to_focused(&app_handle, "menu-toggle-theme", ());
                     }
                     "preferences" => {
-                        let _ = app_handle.emit("menu-open-preferences", ());
+                        emit_to_focused(&app_handle, "menu-open-preferences", ());
                     }
                     "find" => {
-                        let _ = app_handle.emit("menu-find", ());
+                        emit_to_focused(&app_handle, "menu-find", ());
                     }
                     "recent_clear" => {
-                        let _ = app_handle.emit("menu-clear-recent", ());
+                        emit_to_focused(&app_handle, "menu-clear-recent", ());
                     }
                     _ if id.starts_with(RECENT_FILE_PREFIX) => {
                         let path = id[RECENT_FILE_PREFIX.len()..].to_string();
-                        let _ = app_handle.emit(
+                        emit_to_focused(
+                            &app_handle,
                             "menu-open-recent",
                             RecentOpen { kind: "file".into(), path },
                         );
                     }
                     _ if id.starts_with(RECENT_FOLDER_PREFIX) => {
                         let path = id[RECENT_FOLDER_PREFIX.len()..].to_string();
-                        let _ = app_handle.emit(
+                        emit_to_focused(
+                            &app_handle,
                             "menu-open-recent",
                             RecentOpen { kind: "folder".into(), path },
                         );
@@ -638,12 +653,12 @@ pub fn run(path_arg: Option<String>) {
                 if let Ok(path) = url.to_file_path() {
                     if path.is_file() {
                         let path_str = path.to_string_lossy().to_string();
-                        let windows = app_handle.webview_windows();
-                        if let Some(win) = windows.values().next() {
-                            // Hot-start: a window already exists, the JS listener
-                            // is registered. Emit directly; the frontend's cold-start
-                            // pull-from-buffer has already drained any prior value.
-                            let _ = app_handle.emit("open-file", path_str);
+                        // Hot-start: a window already exists, the JS listener is
+                        // registered. Emit to the frontmost one (falling back to
+                        // any window) so the document replaces that window's
+                        // content and not every window's.
+                        if let Some(win) = focused_window(app_handle) {
+                            let _ = app_handle.emit_to(win.label(), "open-file", path_str);
                             let _ = win.unminimize();
                             let _ = win.show();
                             let _ = win.set_focus();
