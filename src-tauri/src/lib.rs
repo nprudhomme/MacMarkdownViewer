@@ -118,6 +118,172 @@ fn window_sort_key(label: &str) -> (u8, u32, String) {
     (1, n, label.to_string())
 }
 
+const ARRANGE_PREFIX: &str = "window-arrange:";
+const BRING_ALL_TO_FRONT_ID: &str = "window-bring-all-front";
+
+// Frame each window had before it was first tiled, so "Return to Previous Size"
+// can undo a run of Fill/half/quarter moves in one step (macOS behaviour).
+// Dropped once restored, and when the window goes away.
+type Frame = (tauri::PhysicalPosition<i32>, tauri::PhysicalSize<u32>);
+static PRE_ARRANGE: OnceLock<Mutex<HashMap<String, Frame>>> = OnceLock::new();
+
+fn pre_arrange() -> &'static Mutex<HashMap<String, Frame>> {
+    PRE_ARRANGE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// The area a window may occupy on its screen — the screen minus menu bar and
+/// Dock — as (x, y, width, height) in physical pixels, top-left origin.
+///
+/// `Monitor::work_area()` is not usable for this: on macOS it reports the right
+/// *size* but an origin of (0, 0), i.e. it ignores the menu bar. Anchoring to
+/// the top still lands correctly because macOS refuses to put a window under the
+/// menu bar, but anything anchored to the bottom (bottom half, bottom quarters,
+/// centering) ends up one menu-bar-height too high. So on macOS we ask AppKit
+/// for the same `visibleFrame` its own Window menu uses, and convert it from
+/// Cocoa's bottom-left origin to the top-left origin tao expects.
+#[cfg(target_os = "macos")]
+fn usable_area(win: &tauri::WebviewWindow) -> Option<(i32, i32, i32, i32)> {
+    use objc2_app_kit::NSScreen;
+    use objc2_foundation::MainThreadMarker;
+
+    let mtm = MainThreadMarker::new()?;
+    let screens = NSScreen::screens(mtm);
+    // screens[0] is the screen holding the menu bar; every Cocoa y is relative
+    // to its bottom edge.
+    let primary_height = screens.iter().next()?.frame().size.height;
+    let to_top_left = |origin_y: f64, height: f64| primary_height - (origin_y + height);
+
+    let scale = win.scale_factor().ok()?;
+    let pos = win.outer_position().ok()?;
+    let (wx, wy) = (pos.x as f64 / scale, pos.y as f64 / scale);
+
+    let screen = screens
+        .iter()
+        .find(|s| {
+            let f = s.frame();
+            let top = to_top_left(f.origin.y, f.size.height);
+            wx >= f.origin.x
+                && wx < f.origin.x + f.size.width
+                && wy >= top
+                && wy < top + f.size.height
+        })
+        .or_else(|| screens.iter().next())?;
+
+    let v = screen.visibleFrame();
+    let top = to_top_left(v.origin.y, v.size.height);
+    let s = screen.backingScaleFactor();
+    Some((
+        (v.origin.x * s).round() as i32,
+        (top * s).round() as i32,
+        (v.size.width * s).round() as i32,
+        (v.size.height * s).round() as i32,
+    ))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn usable_area(win: &tauri::WebviewWindow) -> Option<(i32, i32, i32, i32)> {
+    let monitor = win.current_monitor().ok()??;
+    let area = monitor.work_area();
+    Some((
+        area.position.x,
+        area.position.y,
+        area.size.width as i32,
+        area.size.height as i32,
+    ))
+}
+
+/// Move/resize the frontmost window inside its screen's work area (the screen
+/// minus menu bar and Dock), the way the macOS Window menu does it.
+fn arrange_focused_window(app: &tauri::AppHandle, action: &str) -> Result<(), String> {
+    let Some(win) = focused_window(app) else {
+        return Ok(());
+    };
+    let label = win.label().to_string();
+
+    if action == "restore" {
+        let saved = pre_arrange()
+            .lock()
+            .map_err(|e| e.to_string())?
+            .remove(&label);
+        if let Some((pos, size)) = saved {
+            win.set_size(size).map_err(|e| e.to_string())?;
+            win.set_position(pos).map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+
+    let (ax, ay, aw, ah) =
+        usable_area(&win).ok_or_else(|| "no usable screen area".to_string())?;
+    // Halves are computed as "the rest of the area" for the right/bottom side so
+    // an odd number of pixels never leaves a one-pixel gap down the middle.
+    let (lw, th) = (aw / 2, ah / 2);
+    let (rw, bh) = (aw - lw, ah - th);
+
+    let size = win.outer_size().map_err(|e| e.to_string())?;
+    let (x, y, w, h) = match action {
+        "fill" => (ax, ay, aw, ah),
+        "center" => (
+            ax + (aw - size.width as i32) / 2,
+            ay + (ah - size.height as i32) / 2,
+            size.width as i32,
+            size.height as i32,
+        ),
+        "left" => (ax, ay, lw, ah),
+        "right" => (ax + lw, ay, rw, ah),
+        "top" => (ax, ay, aw, th),
+        "bottom" => (ax, ay + th, aw, bh),
+        "top-left" => (ax, ay, lw, th),
+        "top-right" => (ax + lw, ay, rw, th),
+        "bottom-left" => (ax, ay + th, lw, bh),
+        "bottom-right" => (ax + lw, ay + th, rw, bh),
+        _ => return Ok(()),
+    };
+
+    // Remember the pre-tiling frame once, so chained arrangements still restore
+    // to where the window was before the user started rearranging it.
+    {
+        let mut saved = pre_arrange().lock().map_err(|e| e.to_string())?;
+        if !saved.contains_key(&label) {
+            let pos = win.outer_position().map_err(|e| e.to_string())?;
+            saved.insert(label, (pos, size));
+        }
+    }
+
+    win.set_size(tauri::PhysicalSize::new(w.max(1) as u32, h.max(1) as u32))
+        .map_err(|e| e.to_string())?;
+    win.set_position(tauri::PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Raise every window, leaving the frontmost one still frontmost.
+fn bring_all_to_front(app: &tauri::AppHandle) {
+    let focused = focused_window(app).map(|w| w.label().to_string());
+    for (label, win) in app.webview_windows() {
+        if Some(&label) == focused.as_ref() {
+            continue;
+        }
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+    if let Some(label) = focused {
+        if let Some(win) = app.get_webview_window(&label) {
+            let _ = win.set_focus();
+        }
+    }
+}
+
+fn arrange_item(
+    app: &tauri::AppHandle,
+    action: &str,
+    text: &str,
+) -> Result<tauri::menu::MenuItem<Wry>, String> {
+    MenuItemBuilder::with_id(format!("{ARRANGE_PREFIX}{action}"), text)
+        .build(app)
+        .map_err(|e| e.to_string())
+}
+
 fn rebuild_window_menu(app: &tauri::AppHandle) -> Result<(), String> {
     let guard = window_slot().lock().map_err(|e| e.to_string())?;
     let Some(submenu) = guard.as_ref() else {
@@ -132,16 +298,48 @@ fn rebuild_window_menu(app: &tauri::AppHandle) -> Result<(), String> {
     let minimize = PredefinedMenuItem::minimize(app, None).map_err(|e| e.to_string())?;
     let zoom = PredefinedMenuItem::maximize(app, None).map_err(|e| e.to_string())?;
     let fullscreen = PredefinedMenuItem::fullscreen(app, None).map_err(|e| e.to_string())?;
-    let close = PredefinedMenuItem::close_window(app, None).map_err(|e| e.to_string())?;
+    let fill = arrange_item(app, "fill", "Fill")?;
+    let center = arrange_item(app, "center", "Center")?;
+
+    // Deliberately without accelerators: macOS already owns ⌃⌥+arrows for its
+    // own window tiling, and shadowing those here would be a coin flip over
+    // which one wins.
+    let move_resize = SubmenuBuilder::new(app, "Move & Resize")
+        .items(&[
+            &arrange_item(app, "left", "Left")?,
+            &arrange_item(app, "right", "Right")?,
+            &arrange_item(app, "top", "Top")?,
+            &arrange_item(app, "bottom", "Bottom")?,
+        ])
+        .separator()
+        .items(&[
+            &arrange_item(app, "top-left", "Top Left")?,
+            &arrange_item(app, "top-right", "Top Right")?,
+            &arrange_item(app, "bottom-left", "Bottom Left")?,
+            &arrange_item(app, "bottom-right", "Bottom Right")?,
+        ])
+        .separator()
+        .items(&[&arrange_item(app, "restore", "Return to Previous Size")?])
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let bring_all = MenuItemBuilder::with_id(BRING_ALL_TO_FRONT_ID, "Bring All to Front")
+        .build(app)
+        .map_err(|e| e.to_string())?;
     let sep1 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
     let sep2 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    let sep3 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
     for item in [
         &minimize as &dyn tauri::menu::IsMenuItem<Wry>,
         &zoom,
+        &fill,
+        &center,
+        &move_resize,
         &sep1,
         &fullscreen,
-        &close,
         &sep2,
+        &bring_all,
+        &sep3,
     ] {
         submenu.append(item).map_err(|e| e.to_string())?;
     }
@@ -684,17 +882,17 @@ pub fn run(path_arg: Option<String>) {
                             eprintln!("[menu] new window failed: {e}");
                         }
                     }
-                    // The folder picker lives in the frontend (dialog plugin), so
-                    // the window prompts and then asks Rust for a window on the
-                    // chosen folder.
-                    "open_folder_new_window" => {
-                        emit_to_focused(&app_handle, "menu-open-folder-new-window", ());
-                    }
                     "open_file" => {
                         emit_to_focused(&app_handle, "menu-open-file", ());
                     }
                     "open_folder" => {
                         emit_to_focused(&app_handle, "menu-open-folder", ());
+                    }
+                    // The folder picker lives in the frontend (dialog plugin),
+                    // so the frontmost window prompts and then asks Rust for a
+                    // window on the chosen folder.
+                    "open_folder_new_window" => {
+                        emit_to_focused(&app_handle, "menu-open-folder-new-window", ());
                     }
                     "print" => {
                         emit_to_focused(&app_handle, "menu-print", ());
@@ -713,6 +911,15 @@ pub fn run(path_arg: Option<String>) {
                     }
                     "recent_clear" => {
                         emit_to_focused(&app_handle, "menu-clear-recent", ());
+                    }
+                    BRING_ALL_TO_FRONT_ID => {
+                        bring_all_to_front(&app_handle);
+                    }
+                    _ if id.starts_with(ARRANGE_PREFIX) => {
+                        let action = &id[ARRANGE_PREFIX.len()..];
+                        if let Err(e) = arrange_focused_window(&app_handle, action) {
+                            eprintln!("[menu] arrange '{action}' failed: {e}");
+                        }
                     }
                     // One entry per open window: bring the picked one forward.
                     _ if id.starts_with(WINDOW_ITEM_PREFIX) => {
@@ -776,11 +983,21 @@ pub fn run(path_arg: Option<String>) {
 
     app.run(|app_handle, event| {
         // Keep the Window menu's list and checkmark in step with reality.
-        if let tauri::RunEvent::WindowEvent { ref event, .. } = event {
+        if let tauri::RunEvent::WindowEvent {
+            ref label,
+            ref event,
+            ..
+        } = event
+        {
             if matches!(
                 event,
                 tauri::WindowEvent::Destroyed | tauri::WindowEvent::Focused(true)
             ) {
+                if matches!(event, tauri::WindowEvent::Destroyed) {
+                    if let Ok(mut saved) = pre_arrange().lock() {
+                        saved.remove(label);
+                    }
+                }
                 let _ = rebuild_window_menu(app_handle);
             }
         }

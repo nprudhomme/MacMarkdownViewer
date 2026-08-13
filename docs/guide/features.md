@@ -20,10 +20,22 @@ The **Window** menu lists every open window and switches to the one you pick
 (the active one is checked). Each window is named after the document it shows —
 or its folder when no document is open yet — so the list stays readable.
 
+It also carries the usual macOS window commands:
+
+- **Minimize**, **Zoom**, **Enter Full Screen**
+- **Fill** — the window takes the whole screen minus menu bar and Dock
+- **Center** — keeps the size, centers the window on its screen
+- **Move & Resize** — halves (Left, Right, Top, Bottom), quarters, and **Return
+  to Previous Size**, which undoes a run of arrangements in one step
+- **Bring All to Front** — raises every window, keeping the active one in front
+
+These act on the frontmost window and use the screen it currently sits on. They
+have no keyboard shortcuts on purpose: macOS already binds Control-Option-arrows
+to its own window tiling, which keeps working alongside them.
+
 Windows are fully independent — document, outline, search state and scroll
 position are per window. Menu commands and their shortcuts (Find, Print, Export
 as PDF, Open Recent, Toggle Dark Mode…) act on the frontmost window only.
-
 The recent-files list is shared (the native "Open Recent" submenu is app-wide).
 Preferences (theme, fonts, language) are stored once for the app and applied
 when a window opens, so changing them updates the window you changed them in and
