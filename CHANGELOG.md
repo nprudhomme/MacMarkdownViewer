@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.11.1](https://github.com/ekino/MarkdownViewer/releases/tag/v0.11.1) - 2026-08-13
+
+### Added
+
+- General preference for what opening a document from Finder does when a document is already open: hand it to a new window (default, matching macOS document viewers) or replace the current window's content. A window still on the welcome screen is reused either way, so choosing "new window" never leaves an empty window behind (FR + EN)
+
+### Fixed
+
+- Open documents from folders outside the home directory. Since 0.11.0 the sidebar listed files under `/tmp`, `/Volumes` or a repo cloned outside home, but selecting one did nothing: the listing and the read did not share the same access rule. Reads are now confined to the folder you opened — the access you actually granted — which also stops a crafted relative link from escaping it
+- Show a message when a document cannot be opened. The failure was logged to the console only, so an unopenable file looked like an unresponsive click (FR + EN)
+
 ## [0.11.0](https://github.com/ekino/MarkdownViewer/releases/tag/v0.11.0) - 2026-08-13
 
 ### Added
