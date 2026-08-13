@@ -415,6 +415,10 @@ const slowReadNotice = document.getElementById(
 const slowReadDismiss = document.getElementById(
   "slow-read-dismiss"
 ) as HTMLButtonElement;
+const loadError = document.getElementById("load-error") as HTMLDivElement;
+const loadErrorText = document.getElementById(
+  "load-error-text"
+) as HTMLSpanElement;
 const openBtn = document.getElementById("open-btn") as HTMLButtonElement;
 const examplesBtn = document.getElementById(
   "examples-btn"
@@ -1774,7 +1778,12 @@ async function readDocumentText(
     return { text: cached.text, slow: false };
   }
   const start = performance.now();
-  const text = await invoke<string>("read_document", { path: fullPath });
+  // `root` is the access the user granted by opening this folder; the backend
+  // refuses anything outside it.
+  const text = await invoke<string>("read_document", {
+    path: fullPath,
+    root: rootPath,
+  });
   const slow = performance.now() - start >= SLOW_READ_MS;
   if (mtime !== null) {
     docCache.set(fullPath, { mtime, text });
@@ -1793,6 +1802,7 @@ async function loadFile(filePath: string): Promise<void> {
     }
     const tPing1 = performance.now();
 
+    loadError.hidden = true;
     showLoadingSoon();
     const tRead0 = performance.now();
     let text: string;
@@ -1857,6 +1867,15 @@ async function loadFile(filePath: string): Promise<void> {
     });
   } catch (e) {
     console.error("Failed to load file:", filePath, e);
+    // Surface the failure. A console-only error made a whole class of unopenable
+    // files look like an unresponsive click: the sidebar listed them, selecting
+    // one simply did nothing.
+    hideLoading();
+    loadErrorText.textContent = t("loadError.message").replace(
+      "{file}",
+      filePath.split("/").pop() ?? filePath
+    );
+    loadError.hidden = false;
   }
 }
 

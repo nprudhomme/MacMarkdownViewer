@@ -3,7 +3,6 @@
   "titlebar.print": "Imprimer",
   "titlebar.theme": "Basculer mode sombre",
   "titlebar.preferences": "Préférences",
-
   "search.placeholder": "Rechercher…",
   "search.prev": "Précédent (Shift+Cmd+G)",
   "search.next": "Suivant (Cmd+G)",
@@ -11,7 +10,6 @@
   "search.opt.case": "Sensible à la casse (Aa)",
   "search.opt.diacritics": "Ignorer les accents",
   "search.opt.wholeword": "Mot entier",
-
   "app.name": "Markdown Viewer",
   "empty.subtitle": "Ouvrez un dossier pour parcourir votre documentation.",
   "empty.open": "Ouvrir un dossier",
@@ -19,14 +17,12 @@
   "outline.title": "Sur cette page",
   "breadcrumb.change": "Changer de dossier",
   "sidebar.parent": "Dossier parent",
-
   "prefs.title": "Préférences",
   "prefs.close": "Fermer (Échap)",
   "prefs.done": "Terminé",
   "prefs.tab.general": "Général",
   "prefs.tab.fonts": "Polices",
   "prefs.tab.appearance": "Apparence",
-
   "prefs.general.language.title": "Langue",
   "prefs.general.language.hint": "Langue de l'interface",
   "prefs.general.outline.title": "Panneau de plan",
@@ -34,7 +30,6 @@
   "prefs.outline.auto": "Auto",
   "prefs.outline.always": "Toujours",
   "prefs.outline.hidden": "Caché",
-
   "prefs.fonts.size.title": "Taille",
   "prefs.fonts.size.hint": "Préréglage rapide pour le texte du document",
   "prefs.fonts.size.small": "Petit",
@@ -59,7 +54,6 @@
   "prefs.fonts.size.exact.hint": "Surcharge le préréglage (10–32 px)",
   "prefs.fonts.system.default": "Par défaut système",
   "prefs.fonts.placeholder.auto": "auto",
-
   "prefs.appearance.follow": "Suivre le système",
   "prefs.appearance.follow.hint": "Bascule automatiquement entre la variante claire et sombre du thème selon l'apparence macOS.",
   "prefs.appearance.new": "Nouveau thème…",
@@ -74,7 +68,6 @@
   "prefs.appearance.duplicate": "Dupliquer",
   "prefs.appearance.edit": "Éditer",
   "prefs.appearance.custom.badge": "Personnalisé",
-
   "editor.title": "Éditeur de thème",
   "editor.back": "← Retour",
   "editor.default.name": "Mon thème",
@@ -103,11 +96,11 @@
   "editor.var.table-stripe": "Rayure de tableau",
   "editor.var.search-hit": "Résultat de recherche",
   "editor.var.search-hit-active": "Résultat actif",
-
   "mermaid.error": "Erreur de syntaxe Mermaid — affichage de la source",
   "mermaid.close": "Fermer (Échap)",
   "code.copy": "Copier",
   "code.copied": "Copié !",
   "slowRead.message": "Ce fichier a mis longtemps à s'ouvrir. Ce dossier semble synchronisé dans le cloud (OneDrive, iCloud…) : les fichiers « en ligne uniquement » se téléchargent à la première lecture. Déplacez vos documents dans un dossier local pour accélérer.",
-  "slowRead.dismiss": "Masquer"
+  "slowRead.dismiss": "Masquer",
+  "loadError.message": "Impossible d'ouvrir {file}. Le fichier a peut-être été déplacé, ou il se trouve hors du dossier que vous avez ouvert."
 }

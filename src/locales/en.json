@@ -3,7 +3,6 @@
   "titlebar.print": "Print",
   "titlebar.theme": "Toggle dark mode",
   "titlebar.preferences": "Preferences",
-
   "search.placeholder": "Search…",
   "search.prev": "Previous (Shift+Cmd+G)",
   "search.next": "Next (Cmd+G)",
@@ -11,7 +10,6 @@
   "search.opt.case": "Case sensitive (Aa)",
   "search.opt.diacritics": "Ignore accents",
   "search.opt.wholeword": "Whole word",
-
   "app.name": "Markdown Viewer",
   "empty.subtitle": "Open a folder to browse your documentation.",
   "empty.open": "Open folder",
@@ -19,14 +17,12 @@
   "outline.title": "On this page",
   "breadcrumb.change": "Change folder",
   "sidebar.parent": "Parent directory",
-
   "prefs.title": "Preferences",
   "prefs.close": "Close (Esc)",
   "prefs.done": "Done",
   "prefs.tab.general": "General",
   "prefs.tab.fonts": "Fonts",
   "prefs.tab.appearance": "Appearance",
-
   "prefs.general.language.title": "Language",
   "prefs.general.language.hint": "Interface language",
   "prefs.general.outline.title": "Outline panel",
@@ -34,7 +30,6 @@
   "prefs.outline.auto": "Auto",
   "prefs.outline.always": "Always",
   "prefs.outline.hidden": "Hidden",
-
   "prefs.fonts.size.title": "Size",
   "prefs.fonts.size.hint": "Quick preset for document text",
   "prefs.fonts.size.small": "Small",
@@ -59,7 +54,6 @@
   "prefs.fonts.size.exact.hint": "Overrides the preset (10–32 px)",
   "prefs.fonts.system.default": "System default",
   "prefs.fonts.placeholder.auto": "auto",
-
   "prefs.appearance.follow": "Follow system",
   "prefs.appearance.follow.hint": "Automatically switch between the light and dark variant of the theme based on the macOS appearance.",
   "prefs.appearance.new": "New theme…",
@@ -74,7 +68,6 @@
   "prefs.appearance.duplicate": "Duplicate",
   "prefs.appearance.edit": "Edit",
   "prefs.appearance.custom.badge": "Custom",
-
   "editor.title": "Theme editor",
   "editor.back": "← Back",
   "editor.default.name": "My theme",
@@ -103,11 +96,11 @@
   "editor.var.table-stripe": "Table stripe",
   "editor.var.search-hit": "Search highlight",
   "editor.var.search-hit-active": "Active search hit",
-
   "mermaid.error": "Mermaid syntax error — showing source",
   "mermaid.close": "Close (Esc)",
   "code.copy": "Copy",
   "code.copied": "Copied!",
   "slowRead.message": "This file took a long time to open. This folder looks cloud-synced (OneDrive, iCloud…): \"online-only\" files are downloaded on first read. Move your documents to a local folder to speed things up.",
-  "slowRead.dismiss": "Dismiss"
+  "slowRead.dismiss": "Dismiss",
+  "loadError.message": "Could not open {file}. The file may have been moved, or it sits outside the folder you opened."
 }
