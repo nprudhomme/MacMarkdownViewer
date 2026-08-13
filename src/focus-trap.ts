@@ -146,9 +146,11 @@ export function trapFocus(
   }
 
   container.addEventListener("keydown", onKeyDown);
-  // Defer initial focus so the caller's open animation (display:flex →
-  // visible class) can complete and elements are actually focusable.
-  requestAnimationFrame(focusInitial);
+  // Focus immediately: callers reveal the container (display + visible class)
+  // synchronously before trapping, so its contents are already focusable.
+  // Deferring through a frame callback would silently skip initial focus
+  // whenever frames are suspended, e.g. while the window is occluded.
+  focusInitial();
 
   return {
     refocusFirst() {
