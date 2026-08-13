@@ -158,7 +158,11 @@ Click the PDF button in the sidebar header to export the current document as a P
 
 ## Session Persistence
 
-The app remembers the last opened folder and restores it on next launch.
+The app remembers the last opened folder *and* the exact document you were
+reading, and restores both on next launch — instead of falling back to the
+folder's README. If that document was deleted, renamed, or moved since, the
+folder still opens but with no document selected, rather than silently
+substituting the README.
 
 ## Open Single Files
 
