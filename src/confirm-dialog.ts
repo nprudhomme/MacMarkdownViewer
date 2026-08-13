@@ -33,6 +33,10 @@ function getRefs(): Refs | null {
 
 let activeTrap: FocusTrap | null = null;
 let activeCleanup: (() => void) | null = null;
+// Incremented on every open. The close path hides the shared backdrop only if
+// no newer dialog has claimed it since, which lets the hide be unconditional
+// (see `close`) instead of inferring ownership from the `visible` class.
+let openGeneration = 0;
 
 /**
  * Open a confirmation dialog and resolve when the user picks OK or Cancel.
@@ -62,21 +66,34 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
   cancel.textContent = options.cancelLabel;
   ok.classList.toggle("destructive", options.destructive === true);
 
+  const generation = ++openGeneration;
+  let settled = false;
+
+  // Reveal synchronously rather than from a frame callback. WebKit suspends
+  // both frames and timers while the window is occluded, so nothing deferred
+  // is guaranteed to run: an open that depends on a frame can leave the dialog
+  // invisible but present. Forcing layout between `display` and the class
+  // change gives the opacity transition its starting frame, so the fade still
+  // plays. Note this is defence in depth, not the load-bearing fix — the
+  // guarantee that a stuck backdrop cannot lock the window lives in the CSS
+  // (`.prefs-backdrop:not(.visible)` in index.html).
   backdrop.style.display = "flex";
-  requestAnimationFrame(() => backdrop.classList.add("visible"));
+  void backdrop.offsetHeight;
+  backdrop.classList.add("visible");
   activeTrap = trapFocus(backdrop);
 
   return new Promise<boolean>((resolve) => {
-    let settled = false;
-
     function close(result: boolean): void {
       if (settled) return;
       settled = true;
       backdrop.classList.remove("visible");
       cleanup();
       setTimeout(() => {
-        // Only hide if no other dialog opened in the meantime.
-        if (!backdrop.classList.contains("visible")) {
+        // Hide unconditionally unless a newer dialog now owns the backdrop.
+        // Never infer ownership from the `visible` class: a stale frame could
+        // re-add it here and leave the backdrop displayed forever, covering
+        // the whole window at opacity 0 with every listener already detached.
+        if (generation === openGeneration) {
           backdrop.style.display = "none";
         }
       }, 180);

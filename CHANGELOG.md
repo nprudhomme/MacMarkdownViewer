@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- Fix the whole window becoming unresponsive — no clicks, no scrolling, no file selection — after using Preferences. A modal backdrop could be left displayed while fully transparent, covering the window and swallowing every pointer event with no way to dismiss it. Transparent overlays are now click-through and removed from the tab order and the accessibility tree, so no blocking state can survive a frame or timer callback that never runs (reported on 0.10.0)
+- Modal dialogs no longer rely on an animation frame to become visible, so they still open correctly when the window is occluded and WebKit suspends deferred callbacks
+- Reopening Preferences during the closing fade no longer hides the freshly reopened panel or resets its state underneath the user
 - Stop lingering search highlights when switching documents (reset now reads the live input value) and when clearing the last character (1→0) on the WKWebView CSS Custom Highlight path
 
 ## [0.10.0](https://github.com/ekino/MarkdownViewer/releases/tag/v0.10.0) - 2026-07-01

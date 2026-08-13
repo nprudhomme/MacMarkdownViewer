@@ -332,11 +332,26 @@
       justify-content: center;
       padding: 20px;
       opacity: 0;
-      transition: opacity 0.18s;
+      transition: opacity 0.18s, visibility 0s 0.18s;
+    }
+
+    /* Load-bearing safety net: no blocking UI state may depend on a deferred
+       callback (frame or timer) ever running. A backdrop left displayed
+       without `.visible` is fully transparent, so intercepting input there
+       locks the whole window with no way for the user to recover.
+       `visibility` matters as much as `pointer-events`: without it the
+       invisible dialog stays in the tab order and in the accessibility tree
+       (the panel carries aria-modal), so keyboard and screen-reader users
+       could still reach and activate a destructive button they cannot see.
+       The delayed `visibility` transition lets the fade-out play in full. */
+    .prefs-backdrop:not(.visible) {
+      pointer-events: none;
+      visibility: hidden;
     }
 
     .prefs-backdrop.visible {
       opacity: 1;
+      transition: opacity 0.18s, visibility 0s;
     }
 
     .prefs-panel {
@@ -1617,6 +1632,13 @@
       transition: opacity 0.2s;
     }
 
+    /* See .prefs-backdrop — a transparent overlay must never trap input,
+       focus, or assistive technology. */
+    .image-overlay:not(.visible) {
+      pointer-events: none;
+      visibility: hidden;
+    }
+
     .image-overlay.visible {
       opacity: 1;
     }
@@ -1688,6 +1710,13 @@
       flex-direction: column;
       opacity: 0;
       transition: opacity 0.2s;
+    }
+
+    /* See .prefs-backdrop — a transparent overlay must never trap input,
+       focus, or assistive technology. */
+    .mermaid-overlay:not(.visible) {
+      pointer-events: none;
+      visibility: hidden;
     }
 
     .mermaid-overlay.visible {

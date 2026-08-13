@@ -325,7 +325,9 @@ function openImageOverlay(img: HTMLImageElement): void {
   overlay.appendChild(fullImg);
   document.body.appendChild(overlay);
 
-  requestAnimationFrame(() => overlay.classList.add("visible"));
+  // Reveal synchronously — see confirm-dialog.ts.
+  void overlay.offsetHeight;
+  overlay.classList.add("visible");
   const trap = trapFocus(overlay);
 
   function closeOverlay() {
@@ -381,7 +383,9 @@ function openMermaidFullscreen(svgContent: string, title: string): void {
   overlay.appendChild(body);
   document.body.appendChild(overlay);
 
-  requestAnimationFrame(() => overlay.classList.add("visible"));
+  // Reveal synchronously — see confirm-dialog.ts.
+  void overlay.offsetHeight;
+  overlay.classList.add("visible");
   const trap = trapFocus(overlay);
 
   function onKeyDown(e: KeyboardEvent) {
@@ -1207,6 +1211,9 @@ async function saveEditorTheme(): Promise<void> {
 }
 
 let prefsFocusTrap: FocusTrap | null = null;
+// Bumped on every open so a pending close callback can tell whether it still
+// owns the panel — see closePrefs.
+let prefsGeneration = 0;
 
 function getActiveTabButton(): HTMLButtonElement | null {
   for (const t of prefsTabs) {
@@ -1233,8 +1240,11 @@ function setActiveTab(tab: string): void {
 
 function openPrefs(): void {
   syncPrefsUI();
+  // Reveal synchronously — see confirm-dialog.ts.
+  prefsGeneration++;
   prefsBackdrop.style.display = "flex";
-  requestAnimationFrame(() => prefsBackdrop.classList.add("visible"));
+  void prefsBackdrop.offsetHeight;
+  prefsBackdrop.classList.add("visible");
   void populateFontDropdowns();
   prefsFocusTrap?.release();
   // Open with focus on the active tab rather than the close (×) button, which
@@ -1252,7 +1262,12 @@ function setAdvancedOpen(open: boolean): void {
 
 function closePrefs(): void {
   prefsBackdrop.classList.remove("visible");
+  const generation = prefsGeneration;
   setTimeout(() => {
+    // Skip if Preferences were reopened during the fade-out: this callback
+    // would otherwise hide a panel the user just asked for, and wipe its state
+    // underneath them. Same ownership problem as confirm-dialog.ts.
+    if (generation !== prefsGeneration) return;
     prefsBackdrop.style.display = "none";
     // Reset transient UI state so the next open lands on a clean default:
     // - close the theme editor if it was open (no preview rollback needed —
