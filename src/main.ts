@@ -73,7 +73,7 @@ import {
   toHexForPicker,
 } from "./theme-editor";
 import { createSearchController, type SearchController } from "./search";
-import type { Entry, RecentEntry } from "./utils";
+import type { Entry, PendingOpen, RecentEntry } from "./utils";
 import {
   classifyLink,
   extractRootName,
@@ -82,7 +82,9 @@ import {
   getFullPath,
   mergeRecent,
   parseMarkdownHref,
+  resolveInitialView,
   resolvePath,
+  windowTitle,
 } from "./utils";
 
 // --- Theme & preferences management ---
@@ -440,6 +442,18 @@ const searchOptWholeWord = document.getElementById(
   "search-opt-wholeword"
 ) as HTMLInputElement;
 
+const appWindow = getCurrentWindow();
+
+// Keeps the native window title in sync with what the window shows. The title is
+// hidden in our custom title bar; it exists so this window is identifiable in the
+// native Window menu, which is why renaming goes through the Rust command that
+// also refreshes that menu.
+function syncWindowTitle(): void {
+  void invoke("set_window_title", {
+    title: windowTitle(activeFile, rootName),
+  }).catch((e) => console.warn("Failed to set the window title:", e));
+}
+
 let rootPath: string | null = null;
 let rootName = "";
 let currentPath: string[] = [];
@@ -507,10 +521,6 @@ async function openExamples(): Promise<void> {
   const examplesPath = await resolveResource("examples");
   await setRootPath(examplesPath);
 }
-
-type PendingOpen =
-  | { kind: "file"; path: string }
-  | { kind: "folder"; path: string };
 
 async function openFileFromPath(filePath: string): Promise<void> {
   const lastSep = filePath.lastIndexOf("/");
@@ -1468,7 +1478,6 @@ async function init(): Promise<void> {
   await initTheme();
   initSearch();
   initPreferences();
-  const appWindow = getCurrentWindow();
 
   // Runtime opens (hot-start file association, "Open With", CLI events)
   appWindow.listen<string>("open-folder", (event) => {
@@ -1482,6 +1491,9 @@ async function init(): Promise<void> {
   });
   appWindow.listen("menu-open-file", () => {
     openFile();
+  });
+  appWindow.listen("menu-open-folder-new-window", () => {
+    openFolderInNewWindow();
   });
   appWindow.listen("menu-print", () => {
     printDocument();
@@ -1512,23 +1524,17 @@ async function init(): Promise<void> {
   // Populate the native "Open Recent" submenu from the persisted list.
   await syncRecentMenu(await loadRecents());
 
-  // Cold-start: pull anything the backend buffered (CLI arg or RunEvent::Opened
-  // that fired before our listener was registered). A pending open wins over
-  // the saved folder so the user doesn't see a flash of the previous folder.
+  // Pull anything the backend buffered for *this* window: a CLI arg, a
+  // RunEvent::Opened that fired before our listener was registered, or the
+  // folder handed to a window spawned from the File menu.
   const pending = await invoke<PendingOpen | null>("get_pending_open");
-  if (pending?.kind === "file") {
-    await openFileFromPath(pending.path);
-    return;
+  const view = resolveInitialView(pending, await loadRootPath());
+  if (view.kind === "file") {
+    await openFileFromPath(view.path);
+  } else if (view.kind === "folder") {
+    await setRootPath(view.path);
   }
-  if (pending?.kind === "folder") {
-    await setRootPath(pending.path);
-    return;
-  }
-
-  const saved = await loadRootPath();
-  if (saved) {
-    await setRootPath(saved);
-  }
+  // "welcome": nothing to do, the empty state is what index.html starts on.
 }
 
 async function setRootPath(path: string, fileToOpen?: string): Promise<void> {
@@ -1567,6 +1573,19 @@ async function openFile(): Promise<void> {
   }
 }
 
+// The picker has to run here (dialog plugin is frontend-side); Rust then spawns
+// the window and hands it the folder through its own pending-open slot, so this
+// window's state is left untouched.
+async function openFolderInNewWindow(): Promise<void> {
+  const selected = await open({ directory: true, multiple: false });
+  if (typeof selected !== "string") return;
+  try {
+    await invoke("open_new_window", { path: selected });
+  } catch (e) {
+    console.error("Failed to open a new window:", e);
+  }
+}
+
 // --- Filesystem ---
 
 async function listEntries(dirPath: string): Promise<Entry[]> {
@@ -1587,6 +1606,7 @@ async function renderSidebar(): Promise<void> {
     emptyState.style.display = "block";
     contentEl.classList.add("empty");
     titlebarFilename.textContent = "";
+    syncWindowTitle();
     setSearchEnabled(false);
   }
 
@@ -1803,6 +1823,7 @@ async function loadFile(filePath: string): Promise<void> {
     const t6 = performance.now();
 
     titlebarFilename.textContent = filePath.split("/").pop() ?? "";
+    syncWindowTitle();
     setSearchEnabled(true);
     searchController?.reset();
 

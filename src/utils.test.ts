@@ -8,6 +8,8 @@ import {
   parseMarkdownHref,
   findReadme,
   mergeRecent,
+  resolveInitialView,
+  windowTitle,
 } from "./utils";
 import type { RecentEntry } from "./utils";
 
@@ -267,5 +269,63 @@ describe("mergeRecent", () => {
     const list = [f("/a")];
     mergeRecent(list, f("/b"), 10);
     expect(list).toEqual([f("/a")]);
+  });
+});
+
+describe("resolveInitialView", () => {
+  it("opens a pending file", () => {
+    expect(resolveInitialView({ kind: "file", path: "/docs/a.md" }, null)).toEqual({
+      kind: "file",
+      path: "/docs/a.md",
+    });
+  });
+
+  it("opens a pending folder", () => {
+    expect(resolveInitialView({ kind: "folder", path: "/docs" }, null)).toEqual({
+      kind: "folder",
+      path: "/docs",
+    });
+  });
+
+  it("prefers a pending open over the saved folder", () => {
+    expect(resolveInitialView({ kind: "folder", path: "/docs" }, "/old")).toEqual({
+      kind: "folder",
+      path: "/docs",
+    });
+  });
+
+  it("shows the welcome screen for a window spawned empty", () => {
+    expect(resolveInitialView({ kind: "empty" }, "/old")).toEqual({
+      kind: "welcome",
+    });
+  });
+
+  it("restores the saved folder when nothing is pending", () => {
+    expect(resolveInitialView(null, "/old")).toEqual({
+      kind: "folder",
+      path: "/old",
+    });
+  });
+
+  it("shows the welcome screen with no pending open and no saved folder", () => {
+    expect(resolveInitialView(null, null)).toEqual({ kind: "welcome" });
+  });
+});
+
+describe("windowTitle", () => {
+  it("uses the open document's file name", () => {
+    expect(windowTitle("guide/api.md", "docs")).toBe("api.md");
+  });
+
+  it("uses the file name for a root-level document", () => {
+    expect(windowTitle("README.md", "docs")).toBe("README.md");
+  });
+
+  it("falls back to the folder name when no document is open", () => {
+    expect(windowTitle(null, "docs")).toBe("docs");
+  });
+
+  it("falls back to the app name on the welcome screen", () => {
+    expect(windowTitle(null, "")).toBe("Markdown Viewer");
   });
 });

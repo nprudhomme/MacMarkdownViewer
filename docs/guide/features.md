@@ -8,6 +8,39 @@ Open any folder and navigate its directory tree via the sidebar. The sidebar sho
 
 A breadcrumb bar at the top shows your current location and lets you navigate back to parent directories.
 
+## Multiple Windows
+
+Two folders can be read side by side, each in its own window:
+
+- **File › New Window** (`Cmd+N`) opens an empty window on the welcome screen.
+- **File › Open Folder in New Window…** (`Shift+Cmd+N`) picks a folder and opens
+  it in a new window, leaving the current window untouched.
+
+The **Window** menu lists every open window and switches to the one you pick
+(the active one is checked). Each window is named after the document it shows —
+or its folder when no document is open yet — so the list stays readable.
+
+It also carries the usual macOS window commands:
+
+- **Minimize**, **Zoom**, **Enter Full Screen**
+- **Fill** — the window takes the whole screen minus menu bar and Dock
+- **Center** — keeps the size, centers the window on its screen
+- **Move & Resize** — halves (Left, Right, Top, Bottom), quarters, and **Return
+  to Previous Size**, which undoes a run of arrangements in one step
+- **Bring All to Front** — raises every window, keeping the active one in front
+
+These act on the frontmost window and use the screen it currently sits on. They
+have no keyboard shortcuts on purpose: macOS already binds Control-Option-arrows
+to its own window tiling, which keeps working alongside them.
+
+Windows are fully independent — document, outline, search state and scroll
+position are per window. Menu commands and their shortcuts (Find, Print, Export
+as PDF, Open Recent, Toggle Dark Mode…) act on the frontmost window only.
+The recent-files list is shared (the native "Open Recent" submenu is app-wide).
+Preferences (theme, fonts, language) are stored once for the app and applied
+when a window opens, so changing them updates the window you changed them in and
+every window opened afterwards.
+
 ## Markdown Rendering
 
 Full GitHub-Flavored Markdown (GFM) support including:

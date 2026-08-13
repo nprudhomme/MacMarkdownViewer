@@ -1,13 +1,21 @@
+use std::collections::HashMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Mutex, OnceLock};
-use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, Submenu, SubmenuBuilder};
-use tauri::{Emitter, Manager, Wry};
+use tauri::menu::{
+    CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, Submenu, SubmenuBuilder,
+};
+use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder, Wry};
 
 #[derive(Clone, serde::Serialize)]
 #[serde(tag = "kind", rename_all = "lowercase")]
 enum PendingOpen {
     File { path: String },
     Folder { path: String },
+    /// A freshly spawned window with nothing to open: it must show the welcome
+    /// screen instead of restoring the last folder (which would make "New
+    /// Window" a duplicate of the window it was spawned from).
+    Empty,
 }
 
 #[derive(serde::Deserialize)]
@@ -81,18 +89,418 @@ fn update_recent_menu(app: tauri::AppHandle, items: Vec<RecentItem>) -> Result<(
     Ok(())
 }
 
-// Global slot — available from process start, so `RunEvent::Opened` can write
+// Handle to the "Window" submenu, whose tail is one entry per open window.
+//
+// macOS can populate a Window menu on its own (`setWindowsMenu:`), but AppKit
+// only adopts windows it sees created after that call — our main window already
+// exists by then, and tao's windows never got added at all. So the list is built
+// here and refreshed on every event that can change it: window opened, closed,
+// focused, or renamed by the frontend.
+static WINDOW_SUBMENU: OnceLock<Mutex<Option<Submenu<Wry>>>> = OnceLock::new();
+
+const WINDOW_ITEM_PREFIX: &str = "window:";
+
+fn window_slot() -> &'static Mutex<Option<Submenu<Wry>>> {
+    WINDOW_SUBMENU.get_or_init(|| Mutex::new(None))
+}
+
+/// Order windows the way the user created them: the original window first, then
+/// the spawned ones by number (so `viewer-10` sorts after `viewer-9`).
+fn window_sort_key(label: &str) -> (u8, u32, String) {
+    if label == MAIN_WINDOW_LABEL {
+        return (0, 0, String::new());
+    }
+    let n = label
+        .rsplit('-')
+        .next()
+        .and_then(|s| s.parse::<u32>().ok())
+        .unwrap_or(u32::MAX);
+    (1, n, label.to_string())
+}
+
+const ARRANGE_PREFIX: &str = "window-arrange:";
+const BRING_ALL_TO_FRONT_ID: &str = "window-bring-all-front";
+
+// Frame each window had before it was first tiled, so "Return to Previous Size"
+// can undo a run of Fill/half/quarter moves in one step (macOS behaviour).
+// Dropped once restored, and when the window goes away.
+type Frame = (tauri::PhysicalPosition<i32>, tauri::PhysicalSize<u32>);
+static PRE_ARRANGE: OnceLock<Mutex<HashMap<String, Frame>>> = OnceLock::new();
+
+fn pre_arrange() -> &'static Mutex<HashMap<String, Frame>> {
+    PRE_ARRANGE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+/// The area a window may occupy on its screen — the screen minus menu bar and
+/// Dock — as (x, y, width, height) in physical pixels, top-left origin.
+///
+/// `Monitor::work_area()` is not usable for this: on macOS it reports the right
+/// *size* but an origin of (0, 0), i.e. it ignores the menu bar. Anchoring to
+/// the top still lands correctly because macOS refuses to put a window under the
+/// menu bar, but anything anchored to the bottom (bottom half, bottom quarters,
+/// centering) ends up one menu-bar-height too high. So on macOS we ask AppKit
+/// for the same `visibleFrame` its own Window menu uses, and convert it from
+/// Cocoa's bottom-left origin to the top-left origin tao expects.
+#[cfg(target_os = "macos")]
+fn usable_area(win: &tauri::WebviewWindow) -> Option<(i32, i32, i32, i32)> {
+    use objc2_app_kit::NSScreen;
+    use objc2_foundation::MainThreadMarker;
+
+    let mtm = MainThreadMarker::new()?;
+    let screens = NSScreen::screens(mtm);
+    // screens[0] is the screen holding the menu bar; every Cocoa y is relative
+    // to its bottom edge.
+    let primary_height = screens.iter().next()?.frame().size.height;
+    let to_top_left = |origin_y: f64, height: f64| primary_height - (origin_y + height);
+
+    let scale = win.scale_factor().ok()?;
+    let pos = win.outer_position().ok()?;
+    let (wx, wy) = (pos.x as f64 / scale, pos.y as f64 / scale);
+
+    let screen = screens
+        .iter()
+        .find(|s| {
+            let f = s.frame();
+            let top = to_top_left(f.origin.y, f.size.height);
+            wx >= f.origin.x
+                && wx < f.origin.x + f.size.width
+                && wy >= top
+                && wy < top + f.size.height
+        })
+        .or_else(|| screens.iter().next())?;
+
+    let v = screen.visibleFrame();
+    let top = to_top_left(v.origin.y, v.size.height);
+    let s = screen.backingScaleFactor();
+    Some((
+        (v.origin.x * s).round() as i32,
+        (top * s).round() as i32,
+        (v.size.width * s).round() as i32,
+        (v.size.height * s).round() as i32,
+    ))
+}
+
+#[cfg(not(target_os = "macos"))]
+fn usable_area(win: &tauri::WebviewWindow) -> Option<(i32, i32, i32, i32)> {
+    let monitor = win.current_monitor().ok()??;
+    let area = monitor.work_area();
+    Some((
+        area.position.x,
+        area.position.y,
+        area.size.width as i32,
+        area.size.height as i32,
+    ))
+}
+
+/// Move/resize the frontmost window inside its screen's work area (the screen
+/// minus menu bar and Dock), the way the macOS Window menu does it.
+fn arrange_focused_window(app: &tauri::AppHandle, action: &str) -> Result<(), String> {
+    let Some(win) = focused_window(app) else {
+        return Ok(());
+    };
+    let label = win.label().to_string();
+
+    if action == "restore" {
+        let saved = pre_arrange()
+            .lock()
+            .map_err(|e| e.to_string())?
+            .remove(&label);
+        if let Some((pos, size)) = saved {
+            win.set_size(size).map_err(|e| e.to_string())?;
+            win.set_position(pos).map_err(|e| e.to_string())?;
+        }
+        return Ok(());
+    }
+
+    let (ax, ay, aw, ah) =
+        usable_area(&win).ok_or_else(|| "no usable screen area".to_string())?;
+    // Halves are computed as "the rest of the area" for the right/bottom side so
+    // an odd number of pixels never leaves a one-pixel gap down the middle.
+    let (lw, th) = (aw / 2, ah / 2);
+    let (rw, bh) = (aw - lw, ah - th);
+
+    let size = win.outer_size().map_err(|e| e.to_string())?;
+    let (x, y, w, h) = match action {
+        "fill" => (ax, ay, aw, ah),
+        "center" => (
+            ax + (aw - size.width as i32) / 2,
+            ay + (ah - size.height as i32) / 2,
+            size.width as i32,
+            size.height as i32,
+        ),
+        "left" => (ax, ay, lw, ah),
+        "right" => (ax + lw, ay, rw, ah),
+        "top" => (ax, ay, aw, th),
+        "bottom" => (ax, ay + th, aw, bh),
+        "top-left" => (ax, ay, lw, th),
+        "top-right" => (ax + lw, ay, rw, th),
+        "bottom-left" => (ax, ay + th, lw, bh),
+        "bottom-right" => (ax + lw, ay + th, rw, bh),
+        _ => return Ok(()),
+    };
+
+    // Remember the pre-tiling frame once, so chained arrangements still restore
+    // to where the window was before the user started rearranging it.
+    {
+        let mut saved = pre_arrange().lock().map_err(|e| e.to_string())?;
+        if !saved.contains_key(&label) {
+            let pos = win.outer_position().map_err(|e| e.to_string())?;
+            saved.insert(label, (pos, size));
+        }
+    }
+
+    win.set_size(tauri::PhysicalSize::new(w.max(1) as u32, h.max(1) as u32))
+        .map_err(|e| e.to_string())?;
+    win.set_position(tauri::PhysicalPosition::new(x, y))
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Raise every window, leaving the frontmost one still frontmost.
+fn bring_all_to_front(app: &tauri::AppHandle) {
+    let focused = focused_window(app).map(|w| w.label().to_string());
+    for (label, win) in app.webview_windows() {
+        if Some(&label) == focused.as_ref() {
+            continue;
+        }
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+    if let Some(label) = focused {
+        if let Some(win) = app.get_webview_window(&label) {
+            let _ = win.set_focus();
+        }
+    }
+}
+
+fn arrange_item(
+    app: &tauri::AppHandle,
+    action: &str,
+    text: &str,
+) -> Result<tauri::menu::MenuItem<Wry>, String> {
+    MenuItemBuilder::with_id(format!("{ARRANGE_PREFIX}{action}"), text)
+        .build(app)
+        .map_err(|e| e.to_string())
+}
+
+fn rebuild_window_menu(app: &tauri::AppHandle) -> Result<(), String> {
+    let guard = window_slot().lock().map_err(|e| e.to_string())?;
+    let Some(submenu) = guard.as_ref() else {
+        return Ok(()); // menu not built yet — setup will do the first pass
+    };
+
+    let count = submenu.items().map_err(|e| e.to_string())?.len();
+    for _ in 0..count {
+        submenu.remove_at(0).map_err(|e| e.to_string())?;
+    }
+
+    let minimize = PredefinedMenuItem::minimize(app, None).map_err(|e| e.to_string())?;
+    let zoom = PredefinedMenuItem::maximize(app, None).map_err(|e| e.to_string())?;
+    let fullscreen = PredefinedMenuItem::fullscreen(app, None).map_err(|e| e.to_string())?;
+    let fill = arrange_item(app, "fill", "Fill")?;
+    let center = arrange_item(app, "center", "Center")?;
+
+    // Deliberately without accelerators: macOS already owns ⌃⌥+arrows for its
+    // own window tiling, and shadowing those here would be a coin flip over
+    // which one wins.
+    let move_resize = SubmenuBuilder::new(app, "Move & Resize")
+        .items(&[
+            &arrange_item(app, "left", "Left")?,
+            &arrange_item(app, "right", "Right")?,
+            &arrange_item(app, "top", "Top")?,
+            &arrange_item(app, "bottom", "Bottom")?,
+        ])
+        .separator()
+        .items(&[
+            &arrange_item(app, "top-left", "Top Left")?,
+            &arrange_item(app, "top-right", "Top Right")?,
+            &arrange_item(app, "bottom-left", "Bottom Left")?,
+            &arrange_item(app, "bottom-right", "Bottom Right")?,
+        ])
+        .separator()
+        .items(&[&arrange_item(app, "restore", "Return to Previous Size")?])
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let bring_all = MenuItemBuilder::with_id(BRING_ALL_TO_FRONT_ID, "Bring All to Front")
+        .build(app)
+        .map_err(|e| e.to_string())?;
+    let sep1 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    let sep2 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    let sep3 = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
+    for item in [
+        &minimize as &dyn tauri::menu::IsMenuItem<Wry>,
+        &zoom,
+        &fill,
+        &center,
+        &move_resize,
+        &sep1,
+        &fullscreen,
+        &sep2,
+        &bring_all,
+        &sep3,
+    ] {
+        submenu.append(item).map_err(|e| e.to_string())?;
+    }
+
+    let mut windows: Vec<_> = app
+        .webview_windows()
+        .into_iter()
+        .map(|(label, win)| {
+            let title = win.title().unwrap_or_default();
+            let focused = win.is_focused().unwrap_or(false);
+            (label, title, focused)
+        })
+        .collect();
+    windows.sort_by(|a, b| window_sort_key(&a.0).cmp(&window_sort_key(&b.0)));
+
+    for (label, title, focused) in windows {
+        let text = if title.is_empty() {
+            "Markdown Viewer".to_string()
+        } else {
+            title
+        };
+        let item = CheckMenuItemBuilder::with_id(format!("{WINDOW_ITEM_PREFIX}{label}"), text)
+            .checked(focused)
+            .build(app)
+            .map_err(|e| e.to_string())?;
+        submenu.append(&item).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Rename this window and refresh its entry in the Window menu.
+///
+/// Goes through an app command rather than the frontend calling `setTitle`
+/// directly, so the menu can never drift from the actual titles.
+#[tauri::command]
+fn set_window_title(
+    app: tauri::AppHandle,
+    window: tauri::Window,
+    title: String,
+) -> Result<(), String> {
+    window.set_title(&title).map_err(|e| e.to_string())?;
+    rebuild_window_menu(&app)
+}
+
+// Global map — available from process start, so `RunEvent::Opened` can write
 // safely even if it fires before `setup` finishes (which can happen on macOS
 // cold-start via Apple Events).
-static PENDING_OPEN: OnceLock<Mutex<Option<PendingOpen>>> = OnceLock::new();
+//
+// Keyed by window label: each window drains only its own entry, so spawning a
+// second window with its own folder can never steal the main window's pending
+// open (or vice-versa).
+static PENDING_OPEN: OnceLock<Mutex<HashMap<String, PendingOpen>>> = OnceLock::new();
 
-fn pending_slot() -> &'static Mutex<Option<PendingOpen>> {
-    PENDING_OPEN.get_or_init(|| Mutex::new(None))
+const MAIN_WINDOW_LABEL: &str = "main";
+
+fn pending_map() -> &'static Mutex<HashMap<String, PendingOpen>> {
+    PENDING_OPEN.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn set_pending(label: &str, pending: PendingOpen) {
+    if let Ok(mut map) = pending_map().lock() {
+        map.insert(label.to_string(), pending);
+    }
 }
 
 #[tauri::command]
-fn get_pending_open() -> Option<PendingOpen> {
-    pending_slot().lock().ok().and_then(|mut g| g.take())
+fn get_pending_open(window: tauri::Window) -> Option<PendingOpen> {
+    pending_map()
+        .lock()
+        .ok()
+        .and_then(|mut map| map.remove(window.label()))
+}
+
+// Labels for spawned windows. `viewer-*` is allowlisted in
+// capabilities/default.json — a new prefix here needs a matching entry there or
+// the window comes up without any plugin permissions.
+static WINDOW_SEQ: AtomicUsize = AtomicUsize::new(1);
+
+fn next_window_label(app: &tauri::AppHandle) -> String {
+    loop {
+        let n = WINDOW_SEQ.fetch_add(1, Ordering::Relaxed);
+        let label = format!("viewer-{n}");
+        if app.get_webview_window(&label).is_none() {
+            return label;
+        }
+    }
+}
+
+/// Open a new app window, optionally on `path` (a folder or a single file).
+///
+/// Sync on purpose: Tauri runs non-async commands on the main thread, which is
+/// where macOS window creation has to happen.
+#[tauri::command]
+fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<String, String> {
+    let label = next_window_label(&app);
+
+    // Buffer *before* building the window: the frontend pulls its pending open
+    // during init, which can start as soon as the webview exists.
+    let pending = match path.as_deref() {
+        Some(p) if Path::new(p).is_file() => PendingOpen::File { path: p.to_string() },
+        Some(p) if Path::new(p).is_dir() => PendingOpen::Folder { path: p.to_string() },
+        _ => PendingOpen::Empty,
+    };
+    set_pending(&label, pending);
+
+    let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
+        .title("Markdown Viewer")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(800.0, 500.0)
+        .resizable(true);
+
+    #[cfg(target_os = "macos")]
+    {
+        // Mirror the main window's chrome (see app.windows in tauri.conf.json):
+        // the frontend draws its own title bar over the native traffic lights.
+        builder = builder
+            .title_bar_style(tauri::TitleBarStyle::Overlay)
+            .hidden_title(true);
+    }
+
+    // Cascade off the frontmost window so a new window never lands exactly on
+    // top of the one it was spawned from.
+    if let Some(parent) = focused_window(&app) {
+        if let (Ok(pos), Ok(scale)) = (parent.outer_position(), parent.scale_factor()) {
+            let logical = pos.to_logical::<f64>(scale);
+            builder = builder.position(logical.x + 28.0, logical.y + 28.0);
+        }
+    }
+
+    builder.build().map_err(|e| e.to_string())?;
+    // The new window has no title of its own until its frontend loads a
+    // document; listing it right away keeps the menu honest in the meantime.
+    let _ = rebuild_window_menu(&app);
+    Ok(label)
+}
+
+/// The frontmost window, falling back to any window (macOS can dispatch a menu
+/// command while no window holds focus, e.g. right after the last one closed).
+///
+/// `Manager::get_focused_window` would be the direct route, but it sits behind
+/// tauri's `unstable` feature — this walks the stable webview-window map.
+fn focused_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    let windows = app.webview_windows();
+    windows
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .or_else(|| windows.values().next())
+        .cloned()
+}
+
+// Menu commands act on the frontmost window only. A plain `emit` broadcasts to
+// every webview, so with two windows open a single ⌘F (or "Open Folder…") would
+// fire in both — two folder pickers, two focused search fields.
+fn emit_to_focused<S: serde::Serialize + Clone>(
+    app: &tauri::AppHandle,
+    event: &str,
+    payload: S,
+) {
+    if let Some(win) = focused_window(app) {
+        let _ = app.emit_to(win.label(), event, payload);
+    }
 }
 
 #[tauri::command]
@@ -340,6 +748,8 @@ pub fn run(path_arg: Option<String>) {
             ping,
             export_pdf,
             get_pending_open,
+            open_new_window,
+            set_window_title,
             list_system_fonts,
             themes_dir,
             list_disk_themes,
@@ -361,6 +771,17 @@ pub fn run(path_arg: Option<String>) {
             let open_folder = MenuItemBuilder::with_id("open_folder", "Open Folder…")
                 .accelerator("CmdOrCtrl+Shift+O")
                 .build(app)?;
+
+            let new_window = MenuItemBuilder::with_id("new_window", "New Window")
+                .accelerator("CmdOrCtrl+N")
+                .build(app)?;
+
+            let open_folder_new_window = MenuItemBuilder::with_id(
+                "open_folder_new_window",
+                "Open Folder in New Window…",
+            )
+            .accelerator("CmdOrCtrl+Shift+N")
+            .build(app)?;
 
             let recent_submenu = SubmenuBuilder::new(app, "Open Recent")
                 .item(
@@ -392,6 +813,13 @@ pub fn run(path_arg: Option<String>) {
                 .accelerator("CmdOrCtrl+F")
                 .build(app)?;
 
+            // Contents are filled in by rebuild_window_menu once the handle is
+            // stored below; it appends the fixed items plus one entry per window.
+            let window_menu = SubmenuBuilder::new(app, "Window").build()?;
+            if let Ok(mut slot) = window_slot().lock() {
+                *slot = Some(window_menu.clone());
+            }
+
             let app_name = app.package_info().name.clone();
 
             let menu = MenuBuilder::new(app)
@@ -410,7 +838,9 @@ pub fn run(path_arg: Option<String>) {
                         .quit()
                         .build()?,
                     &SubmenuBuilder::new(app, "File")
-                        .items(&[&open_file, &open_folder])
+                        .items(&[&new_window])
+                        .separator()
+                        .items(&[&open_file, &open_folder, &open_folder_new_window])
                         .item(&recent_submenu)
                         .separator()
                         .items(&[&print_item, &export_pdf_item])
@@ -431,49 +861,91 @@ pub fn run(path_arg: Option<String>) {
                     &SubmenuBuilder::new(app, "View")
                         .items(&[&toggle_theme])
                         .build()?,
+                    &window_menu,
                 ])
                 .build()?;
 
             app.set_menu(menu)?;
 
+            if let Err(e) = rebuild_window_menu(app.handle()) {
+                eprintln!("[menu] initial window list failed: {e}");
+            }
+
             let app_handle = app.handle().clone();
             app.on_menu_event(move |_app, event| {
                 let id = event.id().0.as_str();
                 match id {
+                    // Handled entirely in Rust: no window needs to be involved,
+                    // and the new window may be the first one (nothing focused).
+                    "new_window" => {
+                        if let Err(e) = open_new_window(app_handle.clone(), None) {
+                            eprintln!("[menu] new window failed: {e}");
+                        }
+                    }
                     "open_file" => {
-                        let _ = app_handle.emit("menu-open-file", ());
+                        emit_to_focused(&app_handle, "menu-open-file", ());
                     }
                     "open_folder" => {
-                        let _ = app_handle.emit("menu-open-folder", ());
+                        emit_to_focused(&app_handle, "menu-open-folder", ());
+                    }
+                    // The folder picker lives in the frontend (dialog plugin),
+                    // so the frontmost window prompts and then asks Rust for a
+                    // window on the chosen folder.
+                    "open_folder_new_window" => {
+                        emit_to_focused(&app_handle, "menu-open-folder-new-window", ());
                     }
                     "print" => {
-                        let _ = app_handle.emit("menu-print", ());
+                        emit_to_focused(&app_handle, "menu-print", ());
                     }
                     "export_pdf" => {
-                        let _ = app_handle.emit("menu-export-pdf", ());
+                        emit_to_focused(&app_handle, "menu-export-pdf", ());
                     }
                     "toggle_theme" => {
-                        let _ = app_handle.emit("menu-toggle-theme", ());
+                        emit_to_focused(&app_handle, "menu-toggle-theme", ());
                     }
                     "preferences" => {
-                        let _ = app_handle.emit("menu-open-preferences", ());
+                        emit_to_focused(&app_handle, "menu-open-preferences", ());
                     }
                     "find" => {
-                        let _ = app_handle.emit("menu-find", ());
+                        emit_to_focused(&app_handle, "menu-find", ());
                     }
                     "recent_clear" => {
-                        let _ = app_handle.emit("menu-clear-recent", ());
+                        emit_to_focused(&app_handle, "menu-clear-recent", ());
+                    }
+                    BRING_ALL_TO_FRONT_ID => {
+                        bring_all_to_front(&app_handle);
+                    }
+                    _ if id.starts_with(ARRANGE_PREFIX) => {
+                        let action = &id[ARRANGE_PREFIX.len()..];
+                        if let Err(e) = arrange_focused_window(&app_handle, action) {
+                            eprintln!("[menu] arrange '{action}' failed: {e}");
+                        }
+                    }
+                    // One entry per open window: bring the picked one forward.
+                    _ if id.starts_with(WINDOW_ITEM_PREFIX) => {
+                        let label = &id[WINDOW_ITEM_PREFIX.len()..];
+                        if let Some(win) = app_handle.get_webview_window(label) {
+                            let _ = win.unminimize();
+                            let _ = win.show();
+                            let _ = win.set_focus();
+                        }
+                        // Focus moved, so the checkmark has to move with it. The
+                        // Focused event does this too, but rebuilding here keeps
+                        // the menu right even if focus is refused.
+                        let _ = rebuild_window_menu(&app_handle);
                     }
                     _ if id.starts_with(RECENT_FILE_PREFIX) => {
                         let path = id[RECENT_FILE_PREFIX.len()..].to_string();
-                        let _ = app_handle.emit(
+                        emit_to_focused(
+                            &app_handle,
                             "menu-open-recent",
                             RecentOpen { kind: "file".into(), path },
                         );
                     }
                     _ if id.starts_with(RECENT_FOLDER_PREFIX) => {
                         let path = id[RECENT_FOLDER_PREFIX.len()..].to_string();
-                        let _ = app_handle.emit(
+                        emit_to_focused(
+                            &app_handle,
                             "menu-open-recent",
                             RecentOpen { kind: "folder".into(), path },
                         );
@@ -493,9 +965,7 @@ pub fn run(path_arg: Option<String>) {
                     None
                 };
                 if let Some(p) = pending {
-                    if let Ok(mut slot) = pending_slot().lock() {
-                        *slot = Some(p);
-                    }
+                    set_pending(MAIN_WINDOW_LABEL, p);
                 }
             }
 
@@ -512,25 +982,48 @@ pub fn run(path_arg: Option<String>) {
         .expect("error while building tauri application");
 
     app.run(|app_handle, event| {
+        // Keep the Window menu's list and checkmark in step with reality.
+        if let tauri::RunEvent::WindowEvent {
+            ref label,
+            ref event,
+            ..
+        } = event
+        {
+            if matches!(
+                event,
+                tauri::WindowEvent::Destroyed | tauri::WindowEvent::Focused(true)
+            ) {
+                if matches!(event, tauri::WindowEvent::Destroyed) {
+                    if let Ok(mut saved) = pre_arrange().lock() {
+                        saved.remove(label);
+                    }
+                }
+                let _ = rebuild_window_menu(app_handle);
+            }
+        }
+
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { ref urls } = event {
             for url in urls {
                 if let Ok(path) = url.to_file_path() {
                     if path.is_file() {
                         let path_str = path.to_string_lossy().to_string();
-                        let windows = app_handle.webview_windows();
-                        if let Some(win) = windows.values().next() {
-                            // Hot-start: a window already exists, the JS listener
-                            // is registered. Emit directly; the frontend's cold-start
-                            // pull-from-buffer has already drained any prior value.
-                            let _ = app_handle.emit("open-file", path_str);
+                        // Hot-start: a window already exists, the JS listener is
+                        // registered. Emit to the frontmost one (falling back to
+                        // any window) so the document replaces that window's
+                        // content and not every window's.
+                        if let Some(win) = focused_window(app_handle) {
+                            let _ = app_handle.emit_to(win.label(), "open-file", path_str);
                             let _ = win.unminimize();
                             let _ = win.show();
                             let _ = win.set_focus();
-                        } else if let Ok(mut slot) = pending_slot().lock() {
+                        } else {
                             // Cold-start: Apple Events fired before setup completed.
                             // Buffer so the frontend can pull it on init.
-                            *slot = Some(PendingOpen::File { path: path_str });
+                            set_pending(
+                                MAIN_WINDOW_LABEL,
+                                PendingOpen::File { path: path_str },
+                            );
                         }
                     }
                 }
