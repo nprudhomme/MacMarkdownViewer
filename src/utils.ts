@@ -104,8 +104,17 @@ export type PendingOpen =
 /** What a window should display right after init. */
 export type InitialView =
   | { kind: "file"; path: string }
-  | { kind: "folder"; path: string }
+  | { kind: "folder"; path: string; file?: string }
   | { kind: "welcome" };
+
+/**
+ * True when `file` sits inside `folder` (as a direct or nested child).
+ * Guards against a stale/corrupted store where `lastFile` no longer matches
+ * `lastFolder` — e.g. edited by hand, or left over from an older version.
+ */
+function isWithinFolder(folder: string, file: string): boolean {
+  return file.startsWith(`${folder}/`);
+}
 
 /**
  * Decide what a window shows on startup.
@@ -115,17 +124,32 @@ export type InitialView =
  * a flash of the previous folder. `kind: "empty"` is the marker for a window
  * spawned by "New Window": it must land on the welcome screen rather than
  * restoring `lastFolder`, otherwise it would just clone the window it came from.
+ *
+ * When a folder is restored, `savedFile` (if it's actually inside that folder)
+ * is returned as a path relative to it, ready for `setRootPath`'s `fileToOpen`
+ * — that reopens the exact document instead of falling back to the folder's
+ * README.
  */
 export function resolveInitialView(
   pending: PendingOpen | null,
-  savedFolder: string | null
+  savedFolder: string | null,
+  savedFile: string | null
 ): InitialView {
   if (pending) {
     if (pending.kind === "file") return { kind: "file", path: pending.path };
     if (pending.kind === "folder") return { kind: "folder", path: pending.path };
     return { kind: "welcome" };
   }
-  if (savedFolder) return { kind: "folder", path: savedFolder };
+  if (savedFolder) {
+    if (savedFile && isWithinFolder(savedFolder, savedFile)) {
+      return {
+        kind: "folder",
+        path: savedFolder,
+        file: savedFile.slice(savedFolder.length + 1),
+      };
+    }
+    return { kind: "folder", path: savedFolder };
+  }
   return { kind: "welcome" };
 }
 

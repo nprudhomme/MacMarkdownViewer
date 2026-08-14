@@ -274,41 +274,64 @@ describe("mergeRecent", () => {
 
 describe("resolveInitialView", () => {
   it("opens a pending file", () => {
-    expect(resolveInitialView({ kind: "file", path: "/docs/a.md" }, null)).toEqual({
+    expect(
+      resolveInitialView({ kind: "file", path: "/docs/a.md" }, null, null)
+    ).toEqual({
       kind: "file",
       path: "/docs/a.md",
     });
   });
 
   it("opens a pending folder", () => {
-    expect(resolveInitialView({ kind: "folder", path: "/docs" }, null)).toEqual({
+    expect(
+      resolveInitialView({ kind: "folder", path: "/docs" }, null, null)
+    ).toEqual({
       kind: "folder",
       path: "/docs",
     });
   });
 
   it("prefers a pending open over the saved folder", () => {
-    expect(resolveInitialView({ kind: "folder", path: "/docs" }, "/old")).toEqual({
+    expect(
+      resolveInitialView({ kind: "folder", path: "/docs" }, "/old", null)
+    ).toEqual({
       kind: "folder",
       path: "/docs",
     });
   });
 
   it("shows the welcome screen for a window spawned empty", () => {
-    expect(resolveInitialView({ kind: "empty" }, "/old")).toEqual({
+    expect(resolveInitialView({ kind: "empty" }, "/old", null)).toEqual({
       kind: "welcome",
     });
   });
 
   it("restores the saved folder when nothing is pending", () => {
-    expect(resolveInitialView(null, "/old")).toEqual({
+    expect(resolveInitialView(null, "/old", null)).toEqual({
       kind: "folder",
       path: "/old",
     });
   });
 
   it("shows the welcome screen with no pending open and no saved folder", () => {
-    expect(resolveInitialView(null, null)).toEqual({ kind: "welcome" });
+    expect(resolveInitialView(null, null, null)).toEqual({ kind: "welcome" });
+  });
+
+  it("restores the saved file, relative to the saved folder", () => {
+    expect(
+      resolveInitialView(null, "/docs", "/docs/guide/api.md")
+    ).toEqual({
+      kind: "folder",
+      path: "/docs",
+      file: "guide/api.md",
+    });
+  });
+
+  it("ignores a saved file that isn't inside the saved folder", () => {
+    expect(resolveInitialView(null, "/docs", "/other/api.md")).toEqual({
+      kind: "folder",
+      path: "/docs",
+    });
   });
 });
 

@@ -31,7 +31,7 @@ A native macOS Markdown viewer built with [Tauri v2](https://v2.tauri.app/). Bro
 - **Outline panel** — Auto-generated table of contents (h2/h3) with scroll tracking
 - **Relative link navigation** — Click `.md` links to navigate between documents
 - **Dark mode** — Follows macOS system appearance, toggleable manually
-- **Session persistence** — Remembers your last opened folder across launches
+- **Session persistence** — Remembers your last opened folder *and* document across launches
 - **Multiple windows** — Open a second folder side by side in its own window (Cmd+N for an empty window, Shift+Cmd+N to pick a folder). Each window keeps its own document, outline and search
 - **Open single files** — Open `.md` files directly via CLI, Finder "Open With", or drag & drop
 - **PDF export** — Export the current document as PDF with native rendering

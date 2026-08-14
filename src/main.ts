@@ -477,6 +477,7 @@ let scrollObserver: IntersectionObserver | null = null;
 
 const STORE_FILE = "settings.json";
 const STORE_KEY = "lastFolder";
+const LAST_FILE_KEY = "lastFile";
 const RECENT_KEY = "recentEntries";
 const RECENT_MAX = 10;
 
@@ -491,6 +492,25 @@ async function saveRootPath(path: string): Promise<void> {
 async function loadRootPath(): Promise<string | null> {
   const store = await load(STORE_FILE);
   return ((await store.get(STORE_KEY)) as string) ?? null;
+}
+
+async function saveLastFile(path: string): Promise<void> {
+  const store = await load(STORE_FILE);
+  await store.set(LAST_FILE_KEY, path);
+  await store.save();
+}
+
+async function loadLastFile(): Promise<string | null> {
+  const store = await load(STORE_FILE);
+  return ((await store.get(LAST_FILE_KEY)) as string) ?? null;
+}
+
+// Fire-and-forget: called on every document open, including inside loadFile's
+// per-phase timing block, so it must not delay rendering or skew the debug HUD.
+function persistLastFile(fullPath: string): void {
+  void saveLastFile(fullPath).catch((e) =>
+    console.warn("Failed to save last opened file:", e)
+  );
 }
 
 // --- Recent files/folders ---
@@ -1580,11 +1600,15 @@ async function init(): Promise<void> {
   // RunEvent::Opened that fired before our listener was registered, or the
   // folder handed to a window spawned from the File menu.
   const pending = await invoke<PendingOpen | null>("get_pending_open");
-  const view = resolveInitialView(pending, await loadRootPath());
+  const savedFolder = await loadRootPath();
+  const savedFile = await loadLastFile();
+  const view = resolveInitialView(pending, savedFolder, savedFile);
   if (view.kind === "file") {
     await openFileFromPath(view.path);
   } else if (view.kind === "folder") {
-    await setRootPath(view.path);
+    // view.file (when present) reopens the exact document last viewed in this
+    // folder, in place of the README auto-select setRootPath falls back to.
+    await setRootPath(view.path, view.file);
   }
   // "welcome": nothing to do, the empty state is what index.html starts on.
 }
@@ -1850,6 +1874,7 @@ async function loadFile(filePath: string): Promise<void> {
     slowReadNotice.hidden = !(slowRead && !slowReadDismissed);
 
     activeFile = filePath;
+    persistLastFile(fullPath);
     emptyState.style.display = "none";
     markdownEl.style.display = "block";
     contentEl.classList.remove("empty");
