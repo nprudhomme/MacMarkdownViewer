@@ -75,6 +75,7 @@ import {
   restoreSnapshotOnto,
   toHexForPicker,
 } from "./theme-editor";
+import { readSelectionWithin } from "./find-selection";
 import { createSearchController, type SearchController } from "./search";
 import type { Entry, PendingOpen, RecentEntry } from "./utils";
 import {
@@ -578,6 +579,7 @@ function handleSearchInputKey(e: KeyboardEvent): void {
     } else {
       searchInput.blur();
     }
+    window.getSelection()?.removeAllRanges();
   }
 }
 
@@ -612,7 +614,22 @@ function handleGlobalSearchShortcut(e: KeyboardEvent): void {
     } else {
       searchController?.next();
     }
+    return;
   }
+  if (key === "e" && !searchInput.disabled) {
+    const selection = readDocumentSelection();
+    if (selection) {
+      e.preventDefault();
+      searchInput.value = selection;
+      searchController?.setQuery(selection);
+      searchInput.focus();
+      searchInput.select();
+    }
+  }
+}
+
+function readDocumentSelection(): string {
+  return readSelectionWithin(markdownEl, window.getSelection());
 }
 
 function applySearchOptions(): void {
